@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Acesso Restrito — AlyxSoftwares</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    /* Glass card com blur real em navegadores modernos */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55);
+    }
+
+    /* Orbs animados de fundo */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(72px);
+      mix-blend-mode: multiply;
+      animation: orbPulse 5s ease-in-out infinite alternate;
+      pointer-events: none;
+      will-change: transform, opacity;
+    }
+    @keyframes orbPulse {
+      from { transform: scale(1);    opacity: 0.28; }
+      to   { transform: scale(1.12); opacity: 0.18; }
+    }
+
+    .alerta-enter {
+      animation: alertaEntrar 0.22s ease forwards;
+    }
+    @keyframes alertaEntrar {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Botão com animação de loading */
+    .btn-loading {
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-loading::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      animation: btnShimmer 1.2s infinite;
+    }
+    @keyframes btnShimmer {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(100%); }
+    }
+
+    .no-select { user-select: none; -webkit-user-select: none; }
+
+    /* Acessibilidade: foco visível */
+    input:focus-visible, button:focus-visible {
+      outline: 3px solid #7c3aed;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center justify-center p-4
+             relative overflow-hidden
+             bg-gradient-to-br from-purple-900 via-purple-800 to-gray-900">
+
+  <!-- Orbs decorativos -->
+  <div class="orb w-96 h-96 bg-purple-500 -top-20 -left-20"
+       style="animation-duration:4s;"></div>
+  <div class="orb w-80 h-80 bg-purple-300 -bottom-16 -right-16"
+       style="animation-duration:6s; animation-delay:1s;"></div>
+  <div class="orb w-64 h-64 bg-pink-400 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+       style="animation-duration:7s; animation-delay:2s; opacity:0.08;"></div>
+
+  <!-- ════════════════════════════════════════════
+       CARD PRINCIPAL
+  ════════════════════════════════════════════ -->
+  <div class="glass-card relative z-10 w-full max-w-md rounded-3xl p-8 md:p-10
+              border border-white/20">
+
+    <!-- Cabeçalho -->
+    <header class="text-center mb-8 no-select">
+      <!-- Logo / Ícone de cadeado -->
+      <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center
+                  mx-auto mb-4 shadow-lg border-4 border-purple-100
+                  overflow-hidden relative">
+        <i id="iconeLogin"
+           class="fa-solid fa-lock text-3xl text-purple-600 absolute
+                  transition-opacity duration-300"></i>
+        <img id="imgLogoLogin" src="" alt="Logo da loja"
+             class="w-full h-full object-cover opacity-0 transition-opacity duration-500"
+             aria-hidden="true">
+      </div>
+
+      <!-- Nome da loja (preenchido dinamicamente) -->
+      <h1 id="nomeLoja" class="text-3xl font-black text-gray-800 tracking-tight">
+        AlyxSoftwares
+      </h1>
+      <span class="inline-block mt-2 text-[10px] font-black text-purple-700 uppercase
+                   tracking-widest bg-purple-100 px-3 py-1 rounded-full
+                   border border-purple-200">
+        Painel de Controle
+      </span>
+    </header>
+
+    <!-- Alerta de feedback (erro / sucesso) -->
+    <div id="alertaMensagem"
+         role="alert"
+         aria-live="polite"
+         aria-atomic="true"
+         class="hidden mb-5 p-3.5 rounded-xl text-sm text-center font-bold border">
+    </div>
+
+    <!-- Campos de login -->
+    <div class="space-y-5">
+
+      <!-- Usuário -->
+      <div>
+        <label for="inputUsuario"
+               class="block text-xs font-black text-gray-500 uppercase
+                      tracking-wide mb-2 pl-1 no-select">
+          Usuário de Acesso
+        </label>
+        <div class="relative group">
+          <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"
+                aria-hidden="true">
+            <i class="fa-solid fa-user text-gray-400
+                      group-focus-within:text-purple-500 transition-colors"></i>
+          </span>
+          <input id="inputUsuario"
+                 type="text"
+                 placeholder="Digite seu usuário"
+                 autocomplete="username"
+                 autocorrect="off"
+                 autocapitalize="none"
+                 spellcheck="false"
+                 maxlength="60"
+                 class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200
+                        rounded-xl font-medium text-gray-800 lowercase
+                        focus:outline-none focus:ring-2 focus:ring-purple-500
+                        focus:bg-white transition-all shadow-inner"
+                 onkeydown="if(event.key==='Enter') document.getElementById('inputSenha').focus()">
+        </div>
+      </div>
+
+      <!-- Senha -->
+      <div>
+        <label for="inputSenha"
+               class="block text-xs font-black text-gray-500 uppercase
+                      tracking-wide mb-2 pl-1 no-select">
+          Senha
+        </label>
+        <div class="relative group">
+          <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"
+                aria-hidden="true">
+            <i class="fa-solid fa-key text-gray-400
+                      group-focus-within:text-purple-500 transition-colors"></i>
+          </span>
+          <input id="inputSenha"
+                 type="password"
+                 placeholder="••••••••"
+                 autocomplete="current-password"
+                 maxlength="128"
+                 class="w-full pl-11 pr-12 py-3.5 bg-gray-50 border border-gray-200
+                        rounded-xl font-medium text-gray-800
+                        focus:outline-none focus:ring-2 focus:ring-purple-500
+                        focus:bg-white transition-all shadow-inner"
+                 onkeydown="if(event.key==='Enter') fazerLogin()">
+          <!-- Botão olho: mostrar / ocultar senha -->
+          <button type="button"
+                  id="btnVerSenha"
+                  onclick="alternarVisibilidadeSenha()"
+                  aria-label="Mostrar ou ocultar senha"
+                  tabindex="0"
+                  class="absolute inset-y-0 right-0 pr-4 flex items-center
+                         text-gray-400 hover:text-purple-600 transition-colors">
+            <i id="iconeOlho" class="fa-solid fa-eye text-sm"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Indicador de tentativas restantes (aparece após 3 erros) -->
+      <div id="tentativasWarn" class="hidden text-center">
+        <span class="text-xs font-bold text-orange-500">
+          <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+          <span id="tentativasTexto"></span>
+        </span>
+      </div>
+
+      <!-- Botão Entrar -->
+      <button id="btnEntrar"
+              type="button"
+              onclick="fazerLogin()"
+              class="w-full bg-gradient-to-r from-purple-600 to-purple-700
+                     hover:from-purple-700 hover:to-purple-800
+                     active:scale-[0.98] text-white font-bold py-4 px-4 rounded-xl
+                     transition-all shadow-lg hover:shadow-purple-500/30
+                     flex justify-center items-center gap-2
+                     focus:outline-none focus:ring-4 focus:ring-purple-300">
+        <span id="textoBtnLogin">Entrar no Sistema</span>
+        <i id="iconeBtnLogin" class="fa-solid fa-arrow-right transition-transform"></i>
+      </button>
+
+    </div>
+
+    <!-- Rodapé -->
+    <footer class="mt-8 text-center no-select space-y-1">
+      <p class="text-[10px] text-gray-300 font-medium uppercase tracking-widest">
+        Painel Administrativo
+      </p>
+      <p class="text-[10px] text-gray-300 font-medium">
+        Sistema por
+        <span class="font-bold text-gray-400">AlyxSoftwares</span> ·
+        <a href="tel:+5584981282146"
+           class="text-purple-400 hover:underline font-bold">
+          (84) 981282146
+        </a>
+      </p>
+    </footer>
+
+  </div><!-- /glass-card -->
+
+
+  <!-- ════════════════════════════════════════════
+       JAVASCRIPT
+  ════════════════════════════════════════════ -->
+  <script>
+  "use strict";
+
+  // ═══ CONFIGURAÇÃO DA API ═══════════════════════════════
+  var API_URL = 'https://sua-api.onrender.com'; // ← Altere para sua URL do Render
+
+  /**
+   * Wrapper fetch — substitui google.script.run
+   * @param {string} method   GET | POST | DELETE | PATCH
+   * @param {string} path     ex: '/api/validar-login'
+   * @param {Object} [body]   payload JSON (opcional)
+   * @returns {Promise<Object>}
+   */
+  function api(method, path, body) {
+    var opts = {
+      method:  method,
+      headers: { 'Content-Type': 'application/json' }
+    };
+    if (body && method !== 'GET') opts.body = JSON.stringify(body);
+    return fetch(API_URL + path, opts).then(function(r) { return r.json(); });
+  }
+
+
+  // ── Constantes ────────────────────────────────────────────────────────────
+  var ESTADO_IDLE    = 'idle';
+  var ESTADO_LOADING = 'loading';
+  var ESTADO_SUCESSO = 'sucesso';
+
+  var TENTATIVAS_MAX      = 5;   // Tentativas antes de bloquear
+  var BLOQUEIO_DURACAO_MS = 30000; // 30 segundos
+
+  // ── Estado ────────────────────────────────────────────────────────────────
+  var estadoAtual  = ESTADO_IDLE;
+  var tentativas   = 0;
+  var bloqueadoAte = 0;
+
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 1. INICIALIZAÇÃO
+  // ══════════════════════════════════════════════════════════════════════════
+  window.addEventListener('DOMContentLoaded', function () {
+    // Foca no campo de usuário automaticamente
+    document.getElementById('inputUsuario').focus();
+
+    // Carrega logo e nome da loja em background (não bloqueia o login)
+    api('GET', '/api/configuracoes')
+      .then(aplicarConfiguracoes)
+      .catch(function () { /* Falha silenciosa — não crítica */ });
+  });
+
+  /**
+   * Aplica logo e nome da loja vindos da planilha.
+   * @param {Object} config
+   */
+  function aplicarConfiguracoes(config) {
+    if (!config || typeof config !== 'object') return;
+
+    // Nome da loja
+    var nomeLoja = (config['Nome_Loja'] || '').toString().trim();
+    if (nomeLoja) {
+      document.getElementById('nomeLoja').textContent = nomeLoja;
+      document.title = 'Acesso — ' + nomeLoja;
+    }
+
+    // Logo
+    var urlLogo = (config['URL_Logo'] || '').toString().trim();
+    if (!urlLogo) return;
+
+    var img   = document.getElementById('imgLogoLogin');
+    var icone = document.getElementById('iconeLogin');
+
+    img.onload = function () {
+      icone.style.opacity = '0';
+      setTimeout(function () { icone.style.display = 'none'; }, 300);
+      img.style.opacity = '1';
+    };
+
+    img.onerror = function () {
+      // URL inválida — mantém o cadeado, sem quebrar
+      img.src = '';
+    };
+
+    img.src = urlLogo;
+  }
+
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 2. TOGGLE DE VISIBILIDADE DA SENHA
+  // ══════════════════════════════════════════════════════════════════════════
+  function alternarVisibilidadeSenha() {
+    var input   = document.getElementById('inputSenha');
+    var icone   = document.getElementById('iconeOlho');
+    var visivel = input.type === 'text';
+
+    input.type        = visivel ? 'password' : 'text';
+    icone.className   = visivel
+      ? 'fa-solid fa-eye text-sm'
+      : 'fa-solid fa-eye-slash text-sm';
+
+    // Atualiza aria-label do botão
+    document.getElementById('btnVerSenha').setAttribute(
+      'aria-label',
+      visivel ? 'Mostrar senha' : 'Ocultar senha'
+    );
+  }
+
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 3. SISTEMA DE ALERTAS
+  // ══════════════════════════════════════════════════════════════════════════
+  /**
+   * Exibe um alerta de feedback.
+   * @param {string}           texto — Texto seguro do servidor (não interpolado)
+   * @param {'erro'|'sucesso'} tipo
+   */
+  function exibirAlerta(texto, tipo) {
+    var el = document.getElementById('alertaMensagem');
+
+    // Remove classe de animação, força reflow e reaplica para re-disparar
+    el.classList.remove('alerta-enter');
+    void el.offsetWidth; // Reflow
+    el.classList.add('alerta-enter');
+
+    el.className = 'mb-5 p-3.5 rounded-xl text-sm text-center font-bold border alerta-enter ';
+
+    if (tipo === 'erro') {
+      el.className += 'bg-red-50 text-red-600 border-red-200';
+      // Texto vem de mensagens controladas do servidor — não de input do usuário
+      el.innerHTML  = '<i class="fa-solid fa-triangle-exclamation mr-2" aria-hidden="true"></i>'
+                    + _escaparTexto(texto);
+    } else {
+      el.className += 'bg-green-50 text-green-600 border-green-200';
+      el.innerHTML  = '<i class="fa-solid fa-circle-check mr-2" aria-hidden="true"></i>'
+                    + _escaparTexto(texto);
+    }
+
+    el.classList.remove('hidden');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function ocultarAlerta() {
+    var el = document.getElementById('alertaMensagem');
+    el.classList.add('hidden');
+    el.innerHTML = '';
+  }
+
+  /**
+   * Escapa caracteres HTML para evitar XSS mesmo em mensagens do servidor.
+   * @param {string} str
+   * @returns {string}
+   */
+  function _escaparTexto(str) {
+    var d = document.createElement('div');
+    d.textContent = String(str || '');
+    return d.innerHTML;
+  }
+
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 4. INDICADOR DE TENTATIVAS
+  // ══════════════════════════════════════════════════════════════════════════
+  function atualizarIndicadorTentativas() {
+    var warn = document.getElementById('tentativasWarn');
+    var txt  = document.getElementById('tentativasTexto');
+    var restantes = TENTATIVAS_MAX - tentativas;
+
+    if (tentativas >= 3 && tentativas < TENTATIVAS_MAX) {
+      warn.classList.remove('hidden');
+      txt.textContent = restantes + ' tentativa' + (restantes !== 1 ? 's' : '') + ' restante' + (restantes !== 1 ? 's' : '') + ' antes do bloqueio temporário.';
+    } else {
+      warn.classList.add('hidden');
+    }
+  }
+
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 5. CONTROLE DO BOTÃO
+  // ══════════════════════════════════════════════════════════════════════════
+  function setEstadoBotao(estado) {
+    var btn     = document.getElementById('btnEntrar');
+    var textoEl = document.getElementById('textoBtnLogin');
+    var iconeEl = document.getElementById('iconeBtnLogin');
+
+    estadoAtual = estado;
+
+    if (estado === ESTADO_LOADING) {
+      btn.disabled      = true;
+      btn.classList.add('opacity-80', 'cursor-not-allowed', 'btn-loading');
+      textoEl.textContent = 'Autenticando...';
+      iconeEl.className   = 'fa-solid fa-circle-notch fa-spin';
+
+    } else if (estado === ESTADO_SUCESSO) {
+      btn.disabled      = true;
+      textoEl.textContent = 'Acesso Liberado!';
+      iconeEl.className   = 'fa-solid fa-check';
+      btn.classList.remove('from-purple-600', 'to-purple-700', 'hover:from-purple-700',
+                           'hover:to-purple-800', 'opacity-80', 'btn-loading');
+      btn.classList.add('from-green-500', 'to-green-600', 'cursor-not-allowed');
+
+    } else {
+      // IDLE — restaura estado original
+      btn.disabled      = false;
+      btn.classList.remove('opacity-80', 'cursor-not-allowed', 'btn-loading',
+                           'from-green-500', 'to-green-600');
+      btn.classList.add('from-purple-600', 'to-purple-700',
+                        'hover:from-purple-700', 'hover:to-purple-800');
+      textoEl.textContent = 'Entrar no Sistema';
+      iconeEl.className   = 'fa-solid fa-arrow-right transition-transform';
+    }
+  }
+
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 6. FLUXO DE LOGIN
+  // ══════════════════════════════════════════════════════════════════════════
+  function fazerLogin() {
+    if (estadoAtual === ESTADO_LOADING || estadoAtual === ESTADO_SUCESSO) return;
+
+    // ── Verifica bloqueio temporário por tentativas ──────────────────────
+    var agora = Date.now();
+    if (bloqueadoAte > agora) {
+      var restante = Math.ceil((bloqueadoAte - agora) / 1000);
+      exibirAlerta('Muitas tentativas. Aguarde ' + restante + 's antes de tentar novamente.', 'erro');
+      return;
+    }
+
+    // ── Lê e sanitiza entradas ───────────────────────────────────────────
+    var usuario = (document.getElementById('inputUsuario').value || '').trim().toLowerCase();
+    var senha   = document.getElementById('inputSenha').value || '';
+
+    // Validação básica no cliente
+    if (!usuario) {
+      exibirAlerta('Informe o usuário de acesso.', 'erro');
+      document.getElementById('inputUsuario').focus();
+      return;
+    }
+    if (!senha) {
+      exibirAlerta('Informe a senha.', 'erro');
+      document.getElementById('inputSenha').focus();
+      return;
+    }
+
+    // Limite básico de comprimento (servidor valida de verdade)
+    if (usuario.length > 60 || senha.length > 128) {
+      exibirAlerta('Dados inválidos.', 'erro');
+      return;
+    }
+
+    ocultarAlerta();
+    setEstadoBotao(ESTADO_LOADING);
+
+    api('POST', '/api/validar-login', { usuario: usuario, senha: senha })
+      .then(onLoginSucesso)
+      .catch(onLoginErro);
+  }
+
+  /**
+   * Callback de sucesso na chamada ao GAS (não necessariamente login ok).
+   * @param {{ sucesso: boolean, nome: string, nivel: string, permissoes: string[], mensagem?: string }} resposta
+   */
+  function onLoginSucesso(resposta) {
+    // ── Login rejeitado pelo servidor ────────────────────────────────────
+    if (!resposta || !resposta.sucesso) {
+      tentativas++;
+      setEstadoBotao(ESTADO_IDLE);
+
+      var msg = (resposta && resposta.mensagem)
+        ? resposta.mensagem
+        : 'Usuário ou senha inválidos.';
+
+      if (tentativas >= TENTATIVAS_MAX) {
+        bloqueadoAte = Date.now() + BLOQUEIO_DURACAO_MS;
+        tentativas   = 0;
+        msg += ' Acesso temporariamente bloqueado por 30 segundos.';
+        document.getElementById('tentativasWarn').classList.add('hidden');
+      } else {
+        atualizarIndicadorTentativas();
+      }
+
+      exibirAlerta(msg, 'erro');
+
+      // Limpa a senha por segurança
+      document.getElementById('inputSenha').value = '';
+      document.getElementById('inputSenha').focus();
+      return;
+    }
+
+    // ── Login aprovado ────────────────────────────────────────────────────
+    tentativas = 0;
+    document.getElementById('tentativasWarn').classList.add('hidden');
+
+    // ════════════════════════════════════════════════════════════════
+    // [FIX-CRÍTICO] Persiste o objeto de sessão no formato que
+    // Painel.html espera: chave 'pdacai_user' com { nome, nivel, permissoes }.
+    // O Login.html (documento separado) e o Painel.html compartilham
+    // sessionStorage APENAS se injetados na mesma window via document.write.
+    // ════════════════════════════════════════════════════════════════
+    try {
+      var sessao = {
+        nome:       (resposta.nome       || '').toString(),
+        nivel:      (resposta.nivel      || '').toString(),
+        permissoes: Array.isArray(resposta.permissoes) ? resposta.permissoes : []
+      };
+      sessionStorage.setItem('pdacai_user', JSON.stringify(sessao));
+
+      // Mantém campos legados por compatibilidade (remover em v5)
+      sessionStorage.setItem('sessao_nome',  sessao.nome);
+      sessionStorage.setItem('sessao_cargo', sessao.nivel);
+    } catch (e) {
+      // sessionStorage pode estar desabilitado em alguns contextos GAS
+      // O Painel.html deve lidar com ausência da chave
+    }
+
+    setEstadoBotao(ESTADO_SUCESSO);
+
+    // Redireciona para o Painel (arquivo separado na nova arquitetura)
+    setTimeout(function () {
+      window.location.href = 'painel.html';
+    }, 600);
+  }
+
+  /**
+   * Chamado quando há falha de rede ou erro interno no GAS.
+   * @param {Object|string} erro
+   */
+  function onLoginErro(erro) {
+    setEstadoBotao(ESTADO_IDLE);
+    exibirAlerta(
+      'Falha de conexão com o servidor. Verifique sua internet e tente novamente.',
+      'erro'
+    );
+    // Log interno para debug (não expõe ao usuário)
+    if (typeof console !== 'undefined') {
+      console.warn('[Login] Falha no servidor:', erro);
+    }
+  }
+
+  // injetarPainel() removida — na nova arquitetura o Painel é uma página separada (painel.html).
+  // O redirecionamento ocorre diretamente após onLoginSucesso via window.location.href.
+
+  </script>
+</body>
+</html>

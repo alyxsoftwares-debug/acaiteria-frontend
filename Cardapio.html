@@ -1,0 +1,1764 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cardápio Online</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @media(max-width:400px){
+  .grid-cols-1.sm\:grid-cols-2 { grid-template-columns: 1fr; }
+  #modalAcai .modal-inner { padding: 16px 12px; }
+}
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #c084fc; border-radius: 99px; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .no-select { user-select: none; -webkit-user-select: none; }
+
+    /* ── Header ── */
+    .header-premium {
+      background: linear-gradient(135deg, #1a0533 0%, #2d0f5e 60%, #1a0533 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 4px 32px rgba(0,0,0,0.35);
+    }
+
+    /* ── Cards premium ── */
+    .card-produto {
+      background: #fff;
+      border: 1.5px solid #f3f4f6;
+      border-radius: 20px;
+      overflow: hidden;
+      transition: all 0.22s ease;
+    }
+    .card-produto:hover {
+      border-color: #e9d5ff;
+      box-shadow: 0 8px 32px rgba(124,58,237,0.10);
+      transform: translateY(-2px);
+    }
+
+    /* ── Banner Monte Açaí ── */
+    .banner-monte {
+      background: linear-gradient(135deg, #1a0533 0%, #4c1d95 50%, #2d0f5e 100%);
+      border-radius: 24px;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.22s ease;
+      box-shadow: 0 8px 32px rgba(91,33,182,0.35);
+    }
+    .banner-monte:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(91,33,182,0.45); }
+    .banner-monte:active { transform: scale(0.99); }
+    .banner-monte::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 80% 50%, rgba(167,139,250,0.15) 0%, transparent 60%);
+    }
+
+    /* ── Botão primário ── */
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+      box-shadow: 0 6px 22px rgba(91,33,182,0.45), inset 0 1px 0 rgba(255,255,255,0.15);
+      transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(91,33,182,0.55); }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── Botão confirmar (verde) ── */
+    .btn-confirm {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      box-shadow: 0 6px 22px rgba(4,120,87,0.40), inset 0 1px 0 rgba(255,255,255,0.15);
+      transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(4,120,87,0.50); }
+    .btn-confirm:active { transform: scale(0.97); }
+    .btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── Barra carrinho mobile ── */
+    .barra-carrinho {
+      background: linear-gradient(135deg, #1a0533 0%, #2d0f5e 100%);
+      box-shadow: 0 -8px 32px rgba(0,0,0,0.25);
+    }
+
+    /* ── Sidebar desktop ── */
+    .sidebar-pedido {
+      background: #fff;
+      border: 1.5px solid #f3f4f6;
+      border-radius: 24px;
+      box-shadow: 0 4px 24px rgba(124,58,237,0.07);
+    }
+
+    /* ── Campos de input ── */
+    .campo-texto {
+      width: 100%; padding: 12px 16px;
+      background: #f9fafb; border: 1.5px solid #e5e7eb;
+      border-radius: 14px; color: #1f2937; font-weight: 600;
+      outline: none; transition: all 0.2s; font-size: 0.9rem;
+    }
+    .campo-texto:focus {
+      border-color: #7c3aed; background: #fff;
+      box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+    }
+    .campo-select {
+      width: 100%; padding: 12px 16px;
+      background: #f9fafb; border: 1.5px solid #e5e7eb;
+      border-radius: 14px; color: #1f2937; font-weight: 700;
+      outline: none; transition: all 0.2s;
+    }
+    .campo-select:focus {
+      border-color: #7c3aed; background: #fff;
+      box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+    }
+
+    /* ── Footer ── */
+    .footer-creditos {
+      background: linear-gradient(180deg, transparent 0%, rgba(26,5,51,0.04) 100%);
+      border-top: 1px solid rgba(124,58,237,0.10);
+    }
+
+    /* ── Animações ── */
+    .slide-up { animation: slideUp 0.32s cubic-bezier(0.32,0.72,0,1) forwards; }
+    .fade-in  { animation: fadeIn 0.22s ease forwards; }
+    .pop-in   { animation: popIn 0.2s ease forwards; }
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0);   }
+    }
+    @keyframes popIn {
+      0%   { transform: scale(1);   }
+      50%  { transform: scale(1.35); }
+      100% { transform: scale(1);   }
+    }
+    @keyframes shimmer {
+      0%   { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, #f3f4f6 25%, #e9d5ff30 50%, #f3f4f6 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 12px;
+    }
+  </style>
+</head>
+
+<body class="bg-[#f5f3ff] font-sans pb-32 md:pb-0 min-h-screen flex flex-col">
+
+  <!-- ══════════════════════════════
+       HEADER PREMIUM
+  ══════════════════════════════ -->
+  <header class="header-premium text-white sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between">
+
+      <!-- Logo + Nome -->
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 bg-white/10 rounded-2xl flex items-center justify-center
+                    overflow-hidden border border-white/20 shadow flex-shrink-0 relative">
+          <i id="iconeVitrine" class="fa-solid fa-store text-purple-300 text-base absolute
+             transition-opacity duration-300"></i>
+          <img id="imgLogoVitrine" src="" alt="Logo"
+               class="w-full h-full object-cover opacity-0 transition-opacity duration-500">
+        </div>
+        <div>
+          <h1 id="nomeLoja" class="text-base font-black tracking-tight leading-tight text-white">
+          </h1>
+          <p id="statusLojaVitrine"
+             class="text-[9px] font-black text-purple-300 uppercase tracking-[0.2em] flex items-center gap-1">
+            <i class="fa-solid fa-circle-notch fa-spin text-[8px]"></i> Carregando...
+          </p>
+        </div>
+      </div>
+
+      <!-- Botões direita: rastreio + carrinho sempre juntos -->
+      <div class="flex items-center gap-2">
+
+        <button onclick="abrirRastreamento()"
+                title="Acompanhar pedido"
+                class="relative transition-transform active:scale-90">
+          <div class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-2xl
+                      flex items-center justify-center transition border border-white/15">
+            <i class="fa-solid fa-location-arrow text-white text-sm"></i>
+          </div>
+        </button>
+
+        <button id="btnCarrinhoHeader" onclick="abrirCheckout()"
+                class="hidden relative transition-transform active:scale-90">
+          <div class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-2xl
+                      flex items-center justify-center transition border border-white/15">
+            <i class="fa-solid fa-cart-shopping text-white text-sm"></i>
+          </div>
+          <span id="badgeCarrinho"
+                class="absolute -top-1.5 -right-1.5 bg-green-400 text-white text-[8px]
+                       font-black w-5 h-5 rounded-full items-center justify-center hidden
+                       shadow-lg shadow-green-500/30">0</span>
+        </button>
+
+      </div>
+
+    </div>
+  </header>
+
+
+  <!-- ══════════════════════════════
+       CONTEÚDO PRINCIPAL
+  ══════════════════════════════ -->
+  <div class="max-w-5xl mx-auto w-full px-4 mt-6 flex flex-col md:flex-row gap-6 flex-1">
+
+    <!-- ── COLUNA PRINCIPAL ── -->
+    <main class="flex-1 min-w-0">
+
+      <!-- Loading skeleton -->
+      <div id="loadingCardapio">
+        <div class="skeleton h-44 w-full mb-6"></div>
+        <div class="skeleton h-6 w-40 mb-4"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="skeleton h-32"></div>
+          <div class="skeleton h-32"></div>
+          <div class="skeleton h-32"></div>
+          <div class="skeleton h-32"></div>
+        </div>
+      </div>
+
+      <!-- Banner Monte Açaí -->
+      <div id="areaMonteAcai" class="hidden mb-6 no-select">
+        <div onclick="abrirModalAcai()" class="banner-monte p-6 flex items-center gap-5">
+          <!-- Orb decorativo -->
+          <div class="absolute -right-8 -bottom-8 w-48 h-48 bg-purple-400/10 rounded-full pointer-events-none"></div>
+          <div class="absolute right-20 top-4 w-20 h-20 bg-white/5 rounded-full pointer-events-none"></div>
+
+          <div class="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center
+                      flex-shrink-0 border border-white/20 shadow-xl z-10">
+            <i class="fa-solid fa-wand-magic-sparkles text-3xl text-purple-200"></i>
+          </div>
+          <div class="flex-1 z-10">
+            <span class="inline-block text-[9px] text-purple-200 bg-white/10 border border-white/20
+                         px-2.5 py-0.5 rounded-full font-black uppercase tracking-[0.2em] mb-2">
+              Personalizável
+            </span>
+            <h3 class="font-black text-2xl text-white leading-tight">Monte seu Açaí</h3>
+            <p class="text-purple-200/80 text-xs font-medium mt-1 leading-snug">
+              Escolha o tamanho e adicione seus complementos favoritos
+            </p>
+          </div>
+          <div class="hidden sm:flex flex-col items-center z-10 flex-shrink-0">
+            <span class="bg-white text-purple-700 px-5 py-2.5 rounded-2xl font-black text-sm
+                         shadow-lg shadow-purple-900/30">Montar</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Itens prontos -->
+      <div id="areaItensProntos" class="hidden">
+        <h3 class="font-black text-gray-700 text-sm mb-4 flex items-center gap-2 uppercase tracking-wider">
+          <span class="w-7 h-7 bg-yellow-50 border border-yellow-200 rounded-xl
+                       flex items-center justify-center">
+            <i class="fa-solid fa-star text-yellow-400 text-xs"></i>
+          </span>
+          Prontos para Levar
+        </h3>
+        <div id="listaProdutosReal" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4"></div>
+      </div>
+
+      <!-- Estado vazio -->
+      <div id="estadoVazio" class="hidden">
+        <div class="bg-white border-2 border-dashed border-gray-200 rounded-3xl
+                    py-20 text-center">
+          <div class="w-16 h-16 bg-purple-50 rounded-3xl flex items-center justify-center mx-auto mb-4">
+            <i class="fa-solid fa-bowl-food text-purple-200 text-2xl"></i>
+          </div>
+          <p class="text-gray-500 font-black text-base">Cardápio em preparação</p>
+          <p class="text-gray-300 text-sm mt-1 font-medium">Volte em breve!</p>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ── SIDEBAR CARRINHO (desktop) ── -->
+    <aside class="hidden md:block md:w-80 md:sticky md:top-[80px] md:h-fit">
+      <div class="sidebar-pedido p-5">
+        <h3 class="font-black text-gray-800 mb-4 flex items-center gap-2 text-xs
+                   uppercase tracking-[0.2em] text-gray-500">
+          <span class="w-7 h-7 bg-purple-50 rounded-xl flex items-center justify-center border border-purple-100">
+            <i class="fa-solid fa-cart-shopping text-purple-500 text-xs"></i>
+          </span>
+          Seu Pedido
+        </h3>
+
+        <div id="listaCarrinhoSidebar"
+             class="space-y-2.5 max-h-72 overflow-y-auto no-scrollbar mb-4">
+          <div class="text-center py-10 text-gray-300">
+            <i class="fa-solid fa-bag-shopping text-3xl mb-3 block"></i>
+            <p class="text-xs font-bold">Carrinho vazio</p>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-100 pt-4 space-y-1.5">
+          <div class="flex justify-between text-sm font-bold text-gray-400">
+            <span>Subtotal</span>
+            <span id="subtotalSidebar">R$ 0,00</span>
+          </div>
+          <div class="flex justify-between text-lg font-black text-gray-800">
+            <span>Total</span>
+            <span id="totalSidebar" class="text-green-600">R$ 0,00</span>
+          </div>
+        </div>
+
+        <button id="btnAvancarSidebar" onclick="abrirCheckout()" disabled
+                class="w-full mt-4 bg-gray-100 text-gray-400 font-black py-3.5 rounded-2xl
+                       cursor-not-allowed transition-all text-sm flex items-center
+                       justify-center gap-2 border border-gray-200">
+          Finalizar Pedido <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </aside>
+
+  </div><!-- /conteúdo -->
+
+
+  <!-- ══════════════════════════════
+       FOOTER CRÉDITOS
+  ══════════════════════════════ -->
+  <footer class="footer-creditos mt-12 py-6 md:pb-6 pb-36 no-select">
+    <div class="max-w-5xl mx-auto px-4">
+
+      <!-- Redes sociais (injetadas pelo JS via configurações) -->
+      <div id="footerSocial" class="flex justify-center gap-3 mb-5 hidden"></div>
+
+      <!-- Endereço (injetado pelo JS) -->
+      <div id="footerEndereco" class="text-center text-[11px] text-gray-400 font-medium mb-4 hidden">
+        <i class="fa-solid fa-location-dot text-purple-400 mr-1"></i>
+        <span id="footerEnderecoTxt"></span>
+      </div>
+
+      <div class="flex flex-col items-center gap-2">
+        <!-- Separador decorativo -->
+        <div class="flex items-center gap-3 w-full max-w-xs mb-1">
+          <div class="flex-1 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
+          <i class="fa-solid fa-snowflake text-purple-300 text-[10px]"></i>
+          <div class="flex-1 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
+        </div>
+        <!-- Créditos -->
+        <div class="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+          <span class="text-[10px] text-gray-400 font-medium uppercase tracking-[0.2em]">
+            Sistema desenvolvido por
+          </span>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-black text-purple-500 uppercase tracking-widest
+                         bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-full">
+              AlyxSoftwares
+            </span>
+            <span class="text-gray-300 text-[10px]">·</span>
+            <a href="tel:+5584981282146"
+               class="text-[10px] font-black text-gray-400 hover:text-purple-600
+                      transition-colors flex items-center gap-1">
+              <i class="fa-solid fa-phone text-[8px]"></i>(84) 98128-2146
+            </a>
+          </div>
+        </div>
+        <p class="text-[9px] text-gray-300 font-medium mt-1">
+          © 2025 · Todos os direitos reservados
+        </p>
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- ══════════════════════════════
+       BARRA CARRINHO MOBILE
+  ══════════════════════════════ -->
+  <div id="barraCarrinhoMobile"
+       class="fixed bottom-0 left-0 w-full barra-carrinho p-4 z-30 md:hidden
+              transform translate-y-full transition-transform duration-300 ease-in-out">
+    <div class="max-w-md mx-auto flex items-center justify-between gap-4">
+      <div>
+        <p class="text-[9px] text-purple-300 font-black uppercase tracking-[0.2em]">Total</p>
+        <p id="totalMobile" class="text-2xl font-black text-white">R$ 0,00</p>
+      </div>
+      <button id="btnAvancarMobile" onclick="abrirCheckout()" disabled
+              class="flex-1 bg-white/10 text-white/50 font-black py-3.5 rounded-2xl
+                     cursor-not-allowed transition-all flex justify-center items-center
+                     gap-2 text-sm border border-white/10">
+        <i class="fa-solid fa-cart-shopping"></i> Ver Carrinho
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════
+       MODAL: MONTE SEU AÇAÍ
+  ══════════════════════════════ -->
+  <div id="modalAcai"
+       class="hidden fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm
+              flex items-end md:items-center justify-center">
+    <div class="bg-[#f5f3ff] w-full md:w-[620px] h-[93vh] md:h-[88vh]
+                rounded-t-[28px] md:rounded-[28px] flex flex-col overflow-hidden
+                shadow-2xl slide-up">
+
+      <!-- Header do modal -->
+      <div class="bg-white px-5 py-4 border-b border-gray-100 flex justify-between
+                  items-center flex-shrink-0 shadow-sm">
+        <div>
+          <h2 class="text-base font-black text-gray-900">Monte seu Açaí</h2>
+          <p class="text-[10px] text-purple-500 font-bold uppercase tracking-widest mt-0.5">
+            Siga os passos abaixo
+          </p>
+        </div>
+        <button onclick="fecharModalAcai()"
+                class="w-9 h-9 bg-gray-100 text-gray-500 rounded-full hover:bg-red-50
+                       hover:text-red-500 transition flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Corpo rolável -->
+      <div id="corpoModalAcai" class="flex-1 overflow-y-auto p-4 pb-32 no-scrollbar"></div>
+
+      <!-- Rodapé com preço -->
+      <div class="absolute bottom-0 left-0 w-full bg-white p-4 border-t border-gray-100
+                  flex justify-between items-center shadow-[0_-8px_24px_rgba(0,0,0,0.07)]">
+        <div>
+          <p class="text-[9px] text-gray-400 font-black uppercase tracking-[0.2em]">Subtotal</p>
+          <span id="modalPrecoTotal" class="font-black text-2xl text-green-600">R$ 0,00</span>
+        </div>
+        <button id="btnConfirmarModal" onclick="adicionarMontadoAoCarrinho()" disabled
+                class="bg-gray-100 text-gray-400 font-black py-3 px-7 rounded-2xl
+                       opacity-50 cursor-not-allowed transition-all flex items-center gap-2
+                       text-sm border border-gray-200">
+          Adicionar <i class="fa-solid fa-plus"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════
+       MODAL: CHECKOUT (3 etapas)
+  ══════════════════════════════ -->
+  <div id="modalCheckout"
+       class="hidden fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm
+              flex items-end md:items-center justify-center">
+    <div class="bg-white w-full md:w-[560px] max-h-[95vh] md:max-h-[90vh]
+                rounded-t-[28px] md:rounded-[28px] flex flex-col overflow-hidden
+                shadow-2xl slide-up">
+
+      <!-- Header -->
+      <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <button id="btnVoltarCheckout" onclick="voltarEtapa()"
+                  class="hidden w-8 h-8 bg-gray-100 rounded-full items-center justify-center
+                         text-gray-500 hover:bg-gray-200 transition flex-shrink-0">
+            <i class="fa-solid fa-arrow-left text-xs"></i>
+          </button>
+          <div>
+            <h2 id="tituloCheckout" class="text-base font-black text-gray-900">Seu Pedido</h2>
+            <p id="subtituloCheckout" class="text-[10px] text-purple-500 font-bold
+               uppercase tracking-widest mt-0.5">Revise os itens</p>
+          </div>
+        </div>
+        <button onclick="fecharCheckout()"
+                class="w-9 h-9 bg-gray-100 text-gray-500 rounded-full hover:bg-red-50
+                       hover:text-red-500 transition flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Indicador de etapas -->
+      <div class="px-5 pt-3 pb-1 flex gap-1.5 flex-shrink-0">
+        <div id="step1dot" class="h-1 flex-1 rounded-full bg-purple-600 transition-all"></div>
+        <div id="step2dot" class="h-1 flex-1 rounded-full bg-gray-200 transition-all"></div>
+        <div id="step3dot" class="h-1 flex-1 rounded-full bg-gray-200 transition-all"></div>
+      </div>
+
+      <!-- Corpo dinâmico -->
+      <div id="corpoCheckout" class="flex-1 overflow-y-auto no-scrollbar p-5"></div>
+
+      <!-- Botão de ação -->
+      <div class="px-5 pb-5 pt-3 border-t border-gray-100 flex-shrink-0">
+        <button id="btnAcaoCheckout" onclick="avancarEtapa()"
+                class="w-full btn-primary text-white font-black py-4 rounded-2xl
+                       flex items-center justify-center gap-2 text-sm">
+          Continuar <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════
+       JAVASCRIPT
+  ══════════════════════════════ -->
+  <script>
+  "use strict";
+
+  // ── ESTADO GLOBAL ─────────────────────────────────────────
+  var dadosBase = {
+    tamanhos: [], ingredientes: [], categorias: [],
+    prontos: [], bairros: [], configuracoes: {}
+  };
+  var carrinho = { itens: [] };
+  var lojaEstaAberta = true; // default true até carregar configs
+  var montagem = { tamanhoSelecionado: null, selecoes: {}, subtotal: 0 };
+  var checkout = {
+    etapa: 1, nome: '', telefone: '',
+    tipoEntrega: 'retirada', bairroId: '', nomeBairro: '',
+    taxaEntrega: 0, endereco: '', cupom: null, pagamento: '',
+    valorPago: 0
+  };
+
+  // ── UTILITÁRIOS ───────────────────────────────────────────
+  function fmt(v) { return 'R$ ' + parseFloat(v || 0).toFixed(2).replace('.', ','); }
+
+  function esc(t) {
+    if (!t) return '';
+    return t.toString()
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+
+  // ══════════════════════════════════════════════════════════
+  // 1. INICIALIZAÇÃO
+  // ══════════════════════════════════════════════════════════
+  window.onload = function () {
+  // ═══ CONFIGURAÇÃO DA API ════════════════════════════════
+  var API_URL = 'https://sua-api.onrender.com'; // ← Altere para sua URL do Render
+
+  /**
+   * Wrapper fetch — substitui google.script.run
+   */
+  function api(method, path, body) {
+    var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+    if (body && method !== 'GET') opts.body = JSON.stringify(body);
+    return fetch(API_URL + path, opts).then(function(r) { return r.json(); });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+
+  var _loadTimeout = setTimeout(function () {
+    var ldr = document.getElementById('loadingCardapio');
+    if (ldr && ldr.style.display !== 'none') {
+      mostrarErroCardapio('O servidor demorou para responder. Verifique se o script está publicado como Web App.');
+    }
+  }, 25000);
+
+  api('GET', '/api/cardapio')
+    .then(function (p) {
+      clearTimeout(_loadTimeout);
+      if (!p) { mostrarErroCardapio('Dados inválidos recebidos do servidor.'); return; }
+
+        // Logo
+        if (p.configuracoes && p.configuracoes.URL_Logo) {
+          var img = document.getElementById('imgLogoVitrine');
+          var ico = document.getElementById('iconeVitrine');
+          img.onload = function () {
+            ico.style.opacity = '0';
+            setTimeout(function () { ico.style.display = 'none'; }, 300);
+            img.style.opacity = '1';
+          };
+          img.src = p.configuracoes.URL_Logo;
+        }
+
+        // Nome + título
+        var nomeLoja = (p.configuracoes && p.configuracoes.Nome_Loja) || '';
+        document.getElementById('nomeLoja').innerText = nomeLoja;
+        document.title = nomeLoja + ' — Cardápio Online';
+
+        // Status
+        processarStatusLoja(p.configuracoes || {});
+
+        // Banco local
+        dadosBase.tamanhos      = p.tamanhos     || [];
+        dadosBase.ingredientes  = p.ingredientes || [];
+        dadosBase.categorias    = p.categorias   || [];
+        dadosBase.prontos       = p.prontos      || [];
+        dadosBase.bairros       = p.bairros      || [];
+        dadosBase.configuracoes = p.configuracoes || {};
+
+        // Injeta redes sociais e endereço no footer
+        _renderizarFooterSocial(dadosBase.configuracoes);
+
+        // Remove skeleton e exibe conteúdo
+        var loading = document.getElementById('loadingCardapio');
+        loading.style.opacity = '0';
+        loading.style.transition = 'opacity 0.3s';
+        setTimeout(function () {
+          loading.style.display = 'none';
+          var temConteudo = dadosBase.tamanhos.length > 0 || dadosBase.prontos.length > 0;
+          if (!temConteudo) {
+            document.getElementById('estadoVazio').classList.remove('hidden');
+            return;
+          }
+          if (dadosBase.tamanhos.length > 0) {
+            document.getElementById('areaMonteAcai').classList.remove('hidden');
+          }
+          if (dadosBase.prontos.length > 0) {
+            document.getElementById('areaItensProntos').classList.remove('hidden');
+            renderizarProntos();
+          }
+        }, 300);
+      })
+    .catch(function (err) {
+      clearTimeout(_loadTimeout);
+      mostrarErroCardapio('Verifique sua conexão e atualize a página.');
+    });
+  };
+
+  // Re-verifica status da loja a cada 60s (sem nova chamada ao servidor)
+  setInterval(function () {
+    if (dadosBase.configuracoes && Object.keys(dadosBase.configuracoes).length > 0) {
+      processarStatusLoja(dadosBase.configuracoes);
+    }
+  }, 60000);
+
+  function mostrarErroCardapio(msg) {
+    document.getElementById('loadingCardapio').innerHTML =
+      '<div class="bg-white rounded-3xl border-2 border-red-100 p-10 text-center shadow-sm">' +
+      '<div class="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">' +
+      '<i class="fa-solid fa-triangle-exclamation text-2xl text-red-400"></i></div>' +
+      '<p class="text-red-600 font-black text-base">Falha ao carregar o cardápio</p>' +
+      '<p class="text-red-400 text-sm mt-1 font-medium">' + esc(msg) + '</p>' +
+      '<button onclick="location.reload()" ' +
+      'class="mt-5 btn-primary text-white font-black px-6 py-2.5 rounded-xl text-sm inline-flex items-center gap-2">' +
+      '<i class="fa-solid fa-rotate-right text-xs"></i>Tentar novamente</button></div>';
+  }
+
+
+  // ══════════════════════════════════════════════════════════
+  // 2. STATUS DA LOJA
+  // ══════════════════════════════════════════════════════════
+  function processarStatusLoja(config) {
+    var lbl  = document.getElementById('statusLojaVitrine');
+    var modo = config.Status_Loja || 'AUTOMATICO';
+    var aberta = false;
+
+    if (modo === 'FORCAR_ABERTO') {
+      aberta = true;
+    } else if (modo === 'FORCAR_FECHADO') {
+      aberta = false;
+    } else {
+      try {
+        var agora = new Date();
+        var minAtual = agora.getHours() * 60 + agora.getMinutes();
+        var pA = (config.Hora_Abre  || '00:00').split(':');
+        var pF = (config.Hora_Fecha || '23:59').split(':');
+        var mA = parseInt(pA[0]) * 60 + parseInt(pA[1]);
+        var mF = parseInt(pF[0]) * 60 + parseInt(pF[1]);
+        aberta = mF < mA
+          ? (minAtual >= mA || minAtual <= mF)
+          : (minAtual >= mA && minAtual <= mF);
+      } catch (e) { aberta = true; }
+    }
+
+    lojaEstaAberta = aberta; // persiste globalmente
+
+    if (aberta) {
+      lbl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse mr-1"></span>Aberto agora';
+      lbl.className = 'text-[9px] font-black text-green-300 uppercase tracking-[0.2em] flex items-center gap-1';
+    } else {
+      lbl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-red-400 mr-1"></span>Loja Fechada';
+      lbl.className = 'text-[9px] font-black text-red-300 uppercase tracking-[0.2em] flex items-center gap-1';
+    }
+  }
+
+
+  // ══════════════════════════════════════════════════════════
+  // 3. RENDERIZAÇÃO DOS ITENS PRONTOS
+  // ══════════════════════════════════════════════════════════
+  function renderizarProntos() {
+    var lista = document.getElementById('listaProdutosReal');
+    lista.innerHTML = dadosBase.prontos.map(function (item) {
+      var foto = (item.Foto && item.Foto !== '')
+        ? '<img src="' + esc(item.Foto) + '" loading="lazy" ' +
+          'class="w-24 h-24 object-cover rounded-2xl shadow flex-shrink-0 border border-gray-100" ' +
+          'onerror="this.style.display=\'none\'">'
+        : '<div class="w-24 h-24 bg-purple-50 rounded-2xl flex items-center justify-center ' +
+          'flex-shrink-0 border-2 border-dashed border-purple-100">' +
+          '<i class="fa-solid fa-box-open text-purple-200 text-2xl"></i></div>';
+
+      return '<div class="card-produto flex gap-3 p-3 group">' +
+             foto +
+             '<div class="flex-1 py-1">' +
+             '<span class="text-[9px] font-black text-purple-600 bg-purple-50 border border-purple-100 ' +
+             'px-2 py-0.5 rounded-full uppercase tracking-widest">' +
+             esc(item.Categoria || 'Produto') + '</span>' +
+             '<h4 class="font-black text-gray-800 text-sm leading-tight mt-1.5">' +
+             esc(item.Nome) + '</h4>' +
+             '<p class="text-[11px] text-gray-400 font-medium mt-1 line-clamp-2">' +
+             esc(item.Descricao || '') + '</p>' +
+             '<p class="font-black text-green-600 mt-2 text-sm">' + fmt(item.Preco) + '</p>' +
+             '</div>' +
+             '<div class="flex items-end pb-1 flex-shrink-0">' +
+             '<button onclick="adicionarProntoAoCarrinho(\'' + esc(item.ID_Item) + '\')" ' +
+             'class="w-10 h-10 bg-gray-50 text-gray-400 rounded-2xl border border-gray-200 ' +
+             'flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white ' +
+             'group-hover:border-purple-600 transition-all shadow-sm active:scale-90">' +
+             '<i class="fa-solid fa-plus text-xs"></i></button>' +
+             '</div></div>';
+    }).join('');
+  }
+
+
+  // ══════════════════════════════════════════════════════════
+  // 4. GESTÃO DO CARRINHO
+  // ══════════════════════════════════════════════════════════
+  function getTotal() {
+    return carrinho.itens.reduce(function (s, i) { return s + i.preco; }, 0);
+  }
+
+  function adicionarProntoAoCarrinho(idItem) {
+    var item = dadosBase.prontos.find(function (p) { return p.ID_Item === idItem; });
+    if (!item) return;
+    carrinho.itens.push({
+      uid: Date.now() + Math.random(),
+      tipo: 'pronto', descricao: item.Nome,
+      detalhes: item.Descricao || '', preco: parseFloat(item.Preco || 0)
+    });
+    atualizarUI_Carrinho();
+  }
+
+  function adicionarMontadoAoCarrinho() {
+    if (!montagem.tamanhoSelecionado) return;
+
+    // Validar mínimos por categoria
+    var erroMin = null;
+    var catIds = [];
+    dadosBase.ingredientes.forEach(function (i) {
+      if (i.ID_Categoria && catIds.indexOf(i.ID_Categoria) === -1) catIds.push(i.ID_Categoria);
+    });
+    catIds.forEach(function (catId) {
+      if (erroMin) return;
+      var catObj  = dadosBase.categorias.find(function (c) { return c.ID_Categoria === catId; });
+      var catNome = catObj ? catObj.Nome_Categoria : '';
+      var lim     = getLimitesCategoria(catNome);
+      var atual   = (montagem.selecoes[catId] || []).length;
+      if (lim.min > 0 && atual < lim.min) {
+        erroMin = 'Selecione ao menos ' + lim.min + ' item(ns) em "' + catNome + '".';
+      }
+    });
+
+    if (erroMin) {
+      // Exibir erro no corpo do modal (sem depender de elemento que não existe)
+      var primeiraSecao = document.querySelector('[data-secao-ing]');
+      var errEl = document.getElementById('erroMontagem');
+      if (!errEl) {
+        errEl = document.createElement('div');
+        errEl.id = 'erroMontagem';
+        errEl.style.cssText =
+          'padding:10px 16px;background:#fef2f2;color:#dc2626;font-size:12px;' +
+          'font-weight:700;text-align:center;border-radius:12px;margin-bottom:8px;' +
+          'border:1px solid #fecaca';
+        if (primeiraSecao) {
+          primeiraSecao.parentNode.insertBefore(errEl, primeiraSecao);
+        } else {
+          document.getElementById('corpoModalAcai').prepend(errEl);
+        }
+      }
+      errEl.textContent = '⚠ ' + erroMin;
+      // Scroll para o erro
+      errEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(function () { if (errEl) errEl.textContent = ''; }, 4000);
+      return;
+    }
+
+    var ingredientesList = [];
+    for (var catId in montagem.selecoes) {
+      montagem.selecoes[catId].forEach(function (s) { ingredientesList.push(s.Nome); });
+    }
+    carrinho.itens.push({
+      uid: Date.now() + Math.random(), tipo: 'montado',
+      descricao: montagem.tamanhoSelecionado.Nome,
+      detalhes: ingredientesList.length > 0 ? ingredientesList.join(', ') : 'Sem adicionais',
+      preco: montagem.subtotal
+    });
+    atualizarUI_Carrinho();
+    fecharModalAcai();
+  }
+
+  function removerDoCarrinho(uid) {
+    carrinho.itens = carrinho.itens.filter(function (i) { return i.uid !== uid; });
+    atualizarUI_Carrinho();
+    if (checkout.etapa === 1 &&
+        !document.getElementById('modalCheckout').classList.contains('hidden')) {
+      renderizarEtapa1();
+    }
+  }
+
+  function atualizarUI_Carrinho() {
+    var total = getTotal(); var qtd = carrinho.itens.length; var ativo = qtd > 0;
+    var fmtTot = fmt(total);
+
+    // Mobile bar
+    document.getElementById('totalMobile').innerText = fmtTot;
+    var barra = document.getElementById('barraCarrinhoMobile');
+    var btnM  = document.getElementById('btnAvancarMobile');
+    if (ativo) {
+      barra.classList.remove('translate-y-full');
+      btnM.disabled = false;
+      btnM.className = 'flex-1 btn-confirm text-white font-black py-3.5 rounded-2xl ' +
+                       'transition-all flex justify-center items-center gap-2 text-sm';
+    } else {
+      barra.classList.add('translate-y-full');
+      btnM.disabled = true;
+      btnM.className = 'flex-1 bg-white/10 text-white/50 font-black py-3.5 rounded-2xl ' +
+                       'cursor-not-allowed flex justify-center items-center gap-2 text-sm border border-white/10';
+    }
+
+    // Badge header
+    var badge = document.getElementById('badgeCarrinho');
+    var btnH  = document.getElementById('btnCarrinhoHeader');
+    if (ativo) {
+      badge.innerText = qtd > 9 ? '9+' : String(qtd);
+      badge.classList.remove('hidden'); badge.classList.add('flex', 'pop-in');
+      btnH.classList.remove('hidden');
+      setTimeout(function () { badge.classList.remove('pop-in'); }, 300);
+    } else {
+      badge.classList.add('hidden'); badge.classList.remove('flex');
+      btnH.classList.add('hidden');
+    }
+
+    // Sidebar desktop
+    var btnS = document.getElementById('btnAvancarSidebar');
+    if (ativo) {
+      btnS.disabled = false;
+      btnS.className = 'w-full mt-4 btn-confirm text-white font-black py-3.5 rounded-2xl ' +
+                       'transition-all flex items-center justify-center gap-2 text-sm';
+    } else {
+      btnS.disabled = true;
+      btnS.className = 'w-full mt-4 bg-gray-100 text-gray-400 font-black py-3.5 rounded-2xl ' +
+                       'cursor-not-allowed transition-all flex items-center justify-center gap-2 ' +
+                       'text-sm border border-gray-200';
+    }
+    document.getElementById('subtotalSidebar').innerText = fmtTot;
+    document.getElementById('totalSidebar').innerText    = fmtTot;
+
+    renderizarCarrinhoSidebar();
+    // Se loja está fechada, desabilitar botões de checkout
+    if (!lojaEstaAberta) {
+      [document.getElementById('btnAvancarMobile'), document.getElementById('btnAvancarSidebar')]
+        .forEach(function(btn){
+          if(!btn) return;
+          btn.disabled = true;
+          btn.title    = 'Loja fechada no momento';
+        });
+    }
+  }  // ← fecha atualizarUI_Carrinho
+
+  function renderizarCarrinhoSidebar() {
+    var cont = document.getElementById('listaCarrinhoSidebar');
+    if (carrinho.itens.length === 0) {
+      cont.innerHTML = '<div class="text-center py-10 text-gray-300">' +
+        '<i class="fa-solid fa-bag-shopping text-3xl mb-3 block"></i>' +
+        '<p class="text-xs font-bold">Carrinho vazio</p></div>';
+      return;
+    }
+    cont.innerHTML = carrinho.itens.map(function (it) {
+      var icone = it.tipo === 'montado' ? 'wand-magic-sparkles' : 'box-open';
+      return '<div class="flex items-start gap-3 bg-[#f9f7ff] p-3 rounded-2xl border border-purple-50">' +
+             '<div class="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">' +
+             '<i class="fa-solid fa-' + icone + ' text-purple-600 text-[10px]"></i></div>' +
+             '<div class="flex-1 min-w-0">' +
+             '<p class="font-black text-gray-800 text-xs leading-tight truncate">' + esc(it.descricao) + '</p>' +
+             '<p class="text-[10px] text-gray-400 mt-0.5 truncate">' + esc(it.detalhes) + '</p>' +
+             '<p class="text-xs font-black text-green-600 mt-1">' + fmt(it.preco) + '</p>' +
+             '</div>' +
+             '<button onclick="removerDoCarrinho(' + it.uid + ')" ' +
+             'class="text-gray-300 hover:text-red-400 transition mt-0.5 flex-shrink-0 p-0.5">' +
+             '<i class="fa-solid fa-xmark text-xs"></i></button></div>';
+    }).join('');
+  }
+
+
+  // ══════════════════════════════════════════════════════════
+  // 5. MODAL MONTE SEU AÇAÍ
+  // ══════════════════════════════════════════════════════════
+  function abrirModalAcai() {
+    montagem = { tamanhoSelecionado: null, selecoes: {}, subtotal: 0 };
+    desenharModal();
+    document.getElementById('modalAcai').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharModalAcai() {
+    document.getElementById('modalAcai').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  function selTamanho(idModelo) {
+    montagem.tamanhoSelecionado = dadosBase.tamanhos.find(function (t) {
+      return t.ID_Modelo === idModelo;
+    });
+    if (montagem.tamanhoSelecionado && montagem.tamanhoSelecionado.Limites_JSON) {
+      try {
+        montagem.tamanhoSelecionado.limitesObj = JSON.parse(montagem.tamanhoSelecionado.Limites_JSON);
+      } catch (e) { montagem.tamanhoSelecionado.limitesObj = {}; }
+    } else if (montagem.tamanhoSelecionado) {
+      montagem.tamanhoSelecionado.limitesObj = {};
+    }
+    montagem.selecoes = {};
+    desenharModal();
+    setTimeout(function () {
+      var el = document.querySelector('[data-secao-ing]');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  }
+
+  // Retorna {min, max} para a categoria. Suporta formato legado (número simples) e novo ({min,max})
+  function getLimitesCategoria(nomeCat) {
+    if (!montagem.tamanhoSelecionado || !montagem.tamanhoSelecionado.limitesObj)
+      return { min: 0, max: 99 };
+    var obj = montagem.tamanhoSelecionado.limitesObj;
+    for (var k in obj) {
+      if (k.trim().toLowerCase() === nomeCat.trim().toLowerCase()) {
+        var v = obj[k];
+        if (typeof v === 'object' && v !== null) {
+          return { min: parseInt(v.min || 0), max: parseInt(v.max || 99) };
+        }
+        return { min: 0, max: parseInt(v) || 99 };
+      }
+    }
+    return { min: 0, max: 99 };
+  }
+  // Compatibilidade com chamadas antigas que só precisavam do max
+  function getLimiteCategoria(nomeCat) { return getLimitesCategoria(nomeCat).max; }
+
+  function desenharModal() {
+    // ── Seleção de tamanho ──
+    var html = '<div class="mb-5">' +
+      '<h3 class="font-black text-gray-700 mb-3 flex items-center gap-2 text-sm">' +
+      '<span class="w-7 h-7 bg-purple-600 text-white rounded-full flex items-center ' +
+      'justify-center text-xs font-black flex-shrink-0">1</span>' +
+      'Escolha o Tamanho</h3>' +
+      '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
+
+    dadosBase.tamanhos.forEach(function (t) {
+      var sel = montagem.tamanhoSelecionado && montagem.tamanhoSelecionado.ID_Modelo === t.ID_Modelo;
+      var img = (t.Foto && t.Foto !== '')
+        ? '<img src="' + esc(t.Foto) + '" loading="lazy" class="w-14 h-14 rounded-2xl object-cover shadow flex-shrink-0 border border-gray-100">'
+        : '<div class="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center flex-shrink-0 border border-gray-100">' +
+          '<i class="fa-solid fa-cup-togo text-gray-300 text-xl"></i></div>';
+
+      html += '<label class="flex items-center gap-3 p-3 border-2 rounded-2xl cursor-pointer ' +
+              'transition-all no-select ' +
+              (sel ? 'border-purple-500 bg-purple-50 ring-4 ring-purple-100 '
+                   : 'bg-white border-gray-100 hover:border-purple-200 ') + '">' +
+              '<input type="radio" onchange="selTamanho(\'' + t.ID_Modelo + '\')" ' +
+              'name="tam" class="hidden" ' + (sel ? 'checked' : '') + '>' +
+              img +
+              '<div class="flex-1">' +
+              '<span class="block font-black text-gray-800 text-sm">' + esc(t.Nome) + '</span>' +
+              '<span class="block font-black text-green-600 text-xs mt-0.5">' + fmt(t.Preco_Base) + '</span>' +
+              '</div>' +
+              '<div class="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ' +
+              (sel ? 'border-purple-600 bg-purple-600' : 'border-gray-300') + '">' +
+              (sel ? '<i class="fa-solid fa-check text-white text-[8px]"></i>' : '') +
+              '</div></label>';
+    });
+    html += '</div></div>';
+
+    // ── Ingredientes ──
+    if (montagem.tamanhoSelecionado) {
+      var catIds = [];
+      dadosBase.ingredientes.forEach(function (i) {
+        if (i.ID_Categoria && catIds.indexOf(i.ID_Categoria) === -1) catIds.push(i.ID_Categoria);
+      });
+
+      var step = 2;
+      catIds.forEach(function (catId) {
+        var catObj  = dadosBase.categorias.find(function (c) { return c.ID_Categoria === catId; });
+        var catNome = catObj ? catObj.Nome_Categoria : 'Outros';
+        var lim     = getLimitesCategoria(catNome);
+        var max     = lim.max;
+        var min     = lim.min;
+        var minLabel = min > 0 ? ' · Mín. ' + min : '';
+        var itens   = dadosBase.ingredientes.filter(function (i) { return i.ID_Categoria === catId; });
+        if (!montagem.selecoes[catId]) montagem.selecoes[catId] = [];
+        var atual   = montagem.selecoes[catId].length;
+        var travou  = (max !== 99 && atual >= max);
+
+        html += '<div class="mb-4 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm ' +
+                'relative overflow-hidden" data-secao-ing>' +
+                (travou
+                  ? '<div class="absolute top-0 right-0 bg-green-500 text-white text-[9px] ' +
+                    'font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider z-10">' +
+                    '<i class="fa-solid fa-check mr-1"></i>Completo</div>' : '') +
+                '<h3 class="font-black text-gray-800 mb-1 flex items-center gap-2 text-sm">' +
+                '<span class="w-7 h-7 bg-purple-100 text-purple-700 rounded-full flex items-center ' +
+                'justify-center text-xs font-black flex-shrink-0">' + step + '</span>' +
+                esc(catNome) + '</h3>' +
+                '<p class="text-[10px] font-black text-gray-400 uppercase tracking-wide mb-3">' +
+                (max === 99 ? 'À vontade' : 'Até ' + max) + minLabel +
+                '<span class="' + (travou ? 'text-green-500' : 'text-purple-500') +
+                ' bg-gray-50 px-2 py-0.5 rounded-full ml-1.5 border border-gray-200">' +
+                atual + '/' + (max === 99 ? '∞' : max) + '</span></p>' +
+                '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">';
+
+        itens.forEach(function (item) {
+          var isSel = montagem.selecoes[catId].some(function (s) { return s.ID_Ingrediente === item.ID_Ingrediente; });
+          var block = !isSel && travou;
+          var p     = parseFloat(item.Preco || 0);
+          var badge = p > 0
+            ? '<span class="text-[10px] text-orange-600 font-black bg-orange-50 px-2 py-0.5 ' +
+              'rounded-lg border border-orange-100 flex-shrink-0 whitespace-nowrap">+' + fmt(p) + '</span>'
+            : '<span class="text-[10px] text-green-600 font-black bg-green-50 px-2 py-0.5 ' +
+              'rounded-lg border border-green-100 flex-shrink-0">Grátis</span>';
+          var imgHtml = (item.Foto && item.Foto !== '')
+            ? '<img src="' + esc(item.Foto) + '" loading="lazy" class="w-9 h-9 rounded-full ' +
+              'object-cover flex-shrink-0 border border-gray-100">'
+            : '';
+
+          html += '<label class="flex justify-between items-center p-2.5 border-2 ' +
+                  'rounded-2xl transition-all no-select cursor-pointer ' +
+                  (isSel ? 'border-purple-500 bg-purple-50 ' : 'border-gray-100 bg-white hover:border-purple-200 ') +
+                  (block ? 'opacity-40 grayscale cursor-not-allowed' : 'active:scale-[0.98]') + '">' +
+                  '<div class="flex items-center gap-2 min-w-0">' +
+                  '<input type="checkbox" onchange="toggleItem(\'' + catId + '\',\'' +
+                  item.ID_Ingrediente + '\',\'' + esc(catNome) + '\')" class="hidden" ' +
+                  (isSel ? 'checked' : '') + ' ' + (block ? 'disabled' : '') + '>' +
+                  imgHtml +
+                  '<span class="font-bold text-sm text-gray-700 leading-tight truncate">' +
+                  esc(item.Nome) + '</span></div>' + badge + '</label>';
+        });
+        html += '</div></div>';
+        step++;
+      });
+    }
+
+    document.getElementById('corpoModalAcai').innerHTML = html;
+    calcTotal();
+  }
+
+  function toggleItem(catId, idItem, catNome) {
+    var max = getLimiteCategoria(catNome);
+    var arr = montagem.selecoes[catId];
+    var idx = arr.findIndex(function (s) { return s.ID_Ingrediente === idItem; });
+    if (idx > -1) { arr.splice(idx, 1); }
+    else if (arr.length < max || max === 99) {
+      var ing = dadosBase.ingredientes.find(function (i) { return i.ID_Ingrediente === idItem; });
+      if (ing) arr.push(ing);
+    }
+    desenharModal();
+  }
+
+  function calcTotal() {
+    var btn = document.getElementById('btnConfirmarModal');
+    if (!montagem.tamanhoSelecionado) {
+      montagem.subtotal = 0;
+      document.getElementById('modalPrecoTotal').innerText = fmt(0);
+      btn.disabled  = true;
+      btn.className = 'bg-gray-100 text-gray-400 font-black py-3 px-7 rounded-2xl ' +
+                      'opacity-50 cursor-not-allowed transition-all flex items-center gap-2 ' +
+                      'text-sm border border-gray-200';
+      return;
+    }
+    montagem.subtotal = parseFloat(montagem.tamanhoSelecionado.Preco_Base || 0);
+    for (var cat in montagem.selecoes) {
+      montagem.selecoes[cat].forEach(function (i) { montagem.subtotal += parseFloat(i.Preco || 0); });
+    }
+    document.getElementById('modalPrecoTotal').innerText = fmt(montagem.subtotal);
+    btn.disabled  = false;
+    btn.className = 'btn-confirm text-white font-black py-3 px-7 rounded-2xl ' +
+                    'transition-all flex items-center gap-2 text-sm shadow-lg active:scale-95';
+  }
+
+
+  // ══════════════════════════════════════════════════════════
+  // 6. CHECKOUT — 3 ETAPAS
+  // ══════════════════════════════════════════════════════════
+  function abrirCheckout() {
+    if (carrinho.itens.length === 0) return;
+    if (!lojaEstaAberta) {
+      // Exibe aviso visual em vez de abrir checkout
+      var hora_a = dadosBase.configuracoes.Hora_Abre  || '??:??';
+      var hora_f = dadosBase.configuracoes.Hora_Fecha || '??:??';
+      var msg = document.getElementById('msgLojaFechada');
+      if (!msg) {
+        msg = document.createElement('div');
+        msg.id = 'msgLojaFechada';
+        msg.style.cssText =
+          'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);' +
+          'background:#1e1b4b;color:#fff;padding:14px 24px;border-radius:16px;' +
+          'font-size:13px;font-weight:700;text-align:center;z-index:9999;' +
+          'box-shadow:0 8px 30px rgba(0,0,0,.3);max-width:90vw;';
+        document.body.appendChild(msg);
+      }
+      msg.innerHTML = '🔒 Loja fechada agora. Horário: ' + hora_a + ' às ' + hora_f;
+      msg.style.display = 'block';
+      setTimeout(function () { msg.style.display = 'none'; }, 3500);
+      return;
+    }
+    var retiradaDisp = dadosBase.configuracoes.Retirada_Loja_Ativo !== 'NAO';
+    checkout = {
+      etapa: 1, nome: '', telefone: '',
+      tipoEntrega: retiradaDisp ? 'retirada' : 'entrega', bairroId: '', nomeBairro: '',
+      taxaEntrega: 0, endereco: '', cupom: null, pagamento: '',
+      valorPago: 0
+    };
+    renderizarEtapaAtual();
+    document.getElementById('modalCheckout').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharCheckout() {
+    document.getElementById('modalCheckout').classList.add('hidden');
+    document.body.style.overflow = '';
+    // Garante que, se veio de mostrarSucesso, o checkout é reiniciado
+    checkout.etapa = 1;
+  }
+
+  function atualizarIndicadorEtapas() {
+    [1, 2, 3].forEach(function (n) {
+      var dot = document.getElementById('step' + n + 'dot');
+      dot.className = n <= checkout.etapa
+        ? 'h-1 flex-1 rounded-full bg-purple-600 transition-all'
+        : 'h-1 flex-1 rounded-full bg-gray-200 transition-all';
+    });
+    var btnV = document.getElementById('btnVoltarCheckout');
+    if (checkout.etapa > 1) { btnV.classList.remove('hidden'); btnV.classList.add('flex'); }
+    else { btnV.classList.add('hidden'); btnV.classList.remove('flex'); }
+  }
+
+  function renderizarEtapaAtual() {
+    atualizarIndicadorEtapas();
+    if (checkout.etapa === 1)      renderizarEtapa1();
+    else if (checkout.etapa === 2) renderizarEtapa2();
+    else if (checkout.etapa === 3) renderizarEtapa3();
+  }
+
+  function renderizarEtapa1() {
+    document.getElementById('tituloCheckout').innerText    = 'Seu Pedido';
+    document.getElementById('subtituloCheckout').innerText = carrinho.itens.length + ' item(ns)';
+    document.getElementById('btnAcaoCheckout').innerHTML =
+      'Informar Dados <i class="fa-solid fa-arrow-right ml-1"></i>';
+    document.getElementById('btnAcaoCheckout').className =
+      'w-full btn-primary text-white font-black py-4 rounded-2xl ' +
+      'flex items-center justify-center gap-2 text-sm';
+
+    var html = '<div class="space-y-3 fade-in">' +
+      carrinho.itens.map(function (it) {
+        var icone = it.tipo === 'montado' ? 'wand-magic-sparkles' : 'box-open';
+        return '<div class="flex items-start gap-3 bg-[#f9f7ff] p-3.5 rounded-2xl border border-purple-50">' +
+               '<div class="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">' +
+               '<i class="fa-solid fa-' + icone + ' text-purple-600 text-xs"></i></div>' +
+               '<div class="flex-1 min-w-0">' +
+               '<p class="font-black text-gray-800 text-sm">' + esc(it.descricao) + '</p>' +
+               '<p class="text-[11px] text-gray-400 mt-0.5 leading-snug">' + esc(it.detalhes) + '</p>' +
+               '<p class="font-black text-green-600 text-sm mt-1">' + fmt(it.preco) + '</p>' +
+               '</div>' +
+               '<button onclick="removerDoCarrinho(' + it.uid + ')" ' +
+               'class="text-gray-300 hover:text-red-400 transition flex-shrink-0 mt-0.5 p-1">' +
+               '<i class="fa-solid fa-trash text-xs"></i></button></div>';
+      }).join('') +
+      '<div class="bg-[#f9f7ff] p-4 rounded-2xl border border-purple-50">' +
+      '<div class="flex justify-between font-black text-gray-800">' +
+      '<span>Subtotal</span><span class="text-green-600">' + fmt(getTotal()) + '</span>' +
+      '</div></div></div>';
+
+    document.getElementById('corpoCheckout').innerHTML = html;
+  }
+
+  function renderizarEtapa2() {
+    document.getElementById('tituloCheckout').innerText    = 'Seus Dados';
+    document.getElementById('subtituloCheckout').innerText = 'Nome e tipo de entrega';
+    document.getElementById('btnAcaoCheckout').innerHTML =
+      'Escolher Pagamento <i class="fa-solid fa-arrow-right ml-1"></i>';
+    document.getElementById('btnAcaoCheckout').className =
+      'w-full btn-primary text-white font-black py-4 rounded-2xl ' +
+      'flex items-center justify-center gap-2 text-sm';
+
+    var retiradaAtiva = dadosBase.configuracoes.Retirada_Loja_Ativo !== 'NAO';
+    if (!retiradaAtiva && checkout.tipoEntrega === 'retirada') checkout.tipoEntrega = 'entrega';
+    var isEntrega  = checkout.tipoEntrega === 'entrega';
+    var semBairros = dadosBase.bairros.length === 0;
+
+    var bairrosOpts = dadosBase.bairros.map(function (b) {
+      var id  = b.ID_Bairro || b.Nome_Bairro;
+      var taxa = b['Taxa_R$'] || 0;
+      var sel = checkout.bairroId === id ? 'selected' : '';
+      return '<option value="' + esc(id) + '" data-taxa="' + taxa + '" ' +
+             'data-nome="' + esc(b.Nome_Bairro) + '" ' + sel + '>' +
+             esc(b.Nome_Bairro) + ' — ' + fmt(taxa) + '</option>';
+    }).join('');
+
+    var html =
+      '<div class="space-y-4 fade-in">' +
+      '<div><label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Nome</label>' +
+      '<input id="ck_nome" type="text" value="' + esc(checkout.nome) + '" ' +
+      'placeholder="Seu nome completo" class="campo-texto"></div>' +
+
+      '<div><label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">WhatsApp</label>' +
+      '<input id="ck_tel" type="tel" value="' + esc(checkout.telefone) + '" ' +
+      'placeholder="(00) 00000-0000" class="campo-texto"></div>' +
+
+      (function(){
+        var retiradaAtiva = dadosBase.configuracoes.Retirada_Loja_Ativo !== 'NAO';
+        // Se retirada foi desativada e cliente tinha selecionado retirada, muda para entrega
+        if(!retiradaAtiva && checkout.tipoEntrega==='retirada') checkout.tipoEntrega='entrega';
+        var numCols = retiradaAtiva ? '2' : '1';
+        return '<div><label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Entrega</label>' +
+        '<div class="grid grid-cols-' + numCols + ' gap-3">' +
+        (retiradaAtiva ?
+          '<label class="flex items-center justify-center gap-2 p-3.5 border-2 rounded-2xl ' +
+          'cursor-pointer transition no-select ' +
+          (checkout.tipoEntrega === 'retirada'
+            ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-white hover:border-purple-200') + '">' +
+          '<input type="radio" name="tipoEnt" value="retirada" class="hidden" ' +
+          (checkout.tipoEntrega === 'retirada' ? 'checked' : '') +
+          ' onchange="checkout.tipoEntrega=this.value; renderizarEtapa2()">' +
+          '<i class="fa-solid fa-store text-purple-600 text-sm"></i>' +
+          '<span class="font-black text-sm text-gray-800">Retirar</span></label>' : '') +
+        '';
+      }()) +
+
+      '<label class="flex items-center justify-center gap-2 p-3.5 border-2 rounded-2xl ' +
+      'cursor-pointer transition no-select ' +
+      (checkout.tipoEntrega === 'entrega'
+        ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-white hover:border-purple-200') +
+      (semBairros ? ' opacity-50 pointer-events-none' : '') + '">' +
+      '<input type="radio" name="tipoEnt" value="entrega" class="hidden" ' +
+      (checkout.tipoEntrega === 'entrega' ? 'checked' : '') +
+      (semBairros ? ' disabled' : '') +
+      ' onchange="checkout.tipoEntrega=this.value; renderizarEtapa2()">' +
+      '<i class="fa-solid fa-motorcycle text-purple-600 text-sm"></i>' +
+      '<span class="font-black text-sm text-gray-800">Entrega</span></label>' +
+      '</div></div>';
+
+    if (isEntrega) {
+      html +=
+        '<div><label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Bairro</label>' +
+        '<select id="ck_bairro" onchange="selecionarBairro(this)" class="campo-select font-bold">' +
+        '<option value="">Selecione seu bairro...</option>' + bairrosOpts + '</select></div>' +
+        '<div><label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Endereço</label>' +
+        '<input id="ck_end" type="text" value="' + esc(checkout.endereco) + '" ' +
+        'placeholder="Rua, número, complemento" class="campo-texto"></div>';
+    }
+
+    var cupomVal = checkout.cupom ? checkout.cupom.codigo : '';
+    html +=
+      '<div><label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Cupom</label>' +
+      '<div class="flex gap-2">' +
+      '<input id="ck_cupom" type="text" value="' + esc(cupomVal) + '" placeholder="CÓDIGO" ' +
+      'class="campo-texto flex-1 font-black uppercase tracking-widest text-purple-700" ' +
+      'oninput="this.value=this.value.toUpperCase()">' +
+      '<button onclick="aplicarCupom()" ' +
+      'class="bg-purple-50 text-purple-700 font-black px-5 rounded-2xl border border-purple-200 ' +
+      'hover:bg-purple-100 transition whitespace-nowrap text-sm">Aplicar</button>' +
+      '</div>' +
+      '<p id="msgCupom" class="text-xs font-bold mt-2 hidden"></p>' +
+      '</div></div>';
+
+    document.getElementById('corpoCheckout').innerHTML = html;
+
+    if (checkout.cupom) {
+      var msgEl = document.getElementById('msgCupom');
+      msgEl.innerText = '✓ ' + checkout.cupom.mensagem + ' (-' + fmt(checkout.cupom.desconto) + ')';
+      msgEl.className = 'text-xs font-bold mt-2 text-green-600';
+      msgEl.classList.remove('hidden');
+    }
+  }
+
+  function selecionarBairro(sel) {
+    var opt = sel.options[sel.selectedIndex];
+    checkout.bairroId    = sel.value;
+    checkout.nomeBairro  = opt.dataset.nome  || '';
+    checkout.taxaEntrega = parseFloat(opt.dataset.taxa || 0);
+  }
+
+  function aplicarCupom() {
+    var codigo = document.getElementById('ck_cupom').value.trim().toUpperCase();
+    var msgEl  = document.getElementById('msgCupom');
+    if (!codigo) return;
+    msgEl.innerText  = '⏳ Validando...';
+    msgEl.className  = 'text-xs font-bold mt-2 text-gray-500';
+    msgEl.classList.remove('hidden');
+    api('GET', '/api/cupons/validar?codigo=' + encodeURIComponent(codigo))
+      .then(function (res) {
+        if (res.valido) {
+          // Verifica se o cupom é permitido no cardápio online
+          if (res.usarCardapio === false) {
+            checkout.cupom  = null;
+            msgEl.innerText = '✗ Este cupom é válido apenas no balcão.';
+            msgEl.className = 'text-xs font-bold mt-2 text-red-500';
+            return;
+          }
+          // Calcula desconto: PERCENTUAL usa subtotal atual; VALOR usa direto
+          var subtotalAtual = checkout.itens.reduce(function(s,i){ return s+(i.preco||0); }, 0);
+          var descCalculado = res.tipo === 'PERCENTUAL'
+            ? Math.round(subtotalAtual * (res.valor / 100) * 100) / 100
+            : (res.valor || res.desconto || 0);
+          checkout.cupom = {
+            codigo:     res.codigo,
+            tipo:       res.tipo,
+            valor:      res.valor,
+            desconto:   descCalculado,
+            mensagem:   res.mensagem
+          };
+          msgEl.innerText = '✓ ' + res.mensagem + ' (-' + fmt(descCalculado) + ')';
+          msgEl.className = 'text-xs font-bold mt-2 text-green-600';
+        } else {
+          checkout.cupom  = null;
+          msgEl.innerText = '✗ ' + res.mensagem;
+          msgEl.className = 'text-xs font-bold mt-2 text-red-500';
+        }
+      })
+      .catch(function () {
+        msgEl.innerText = '✗ Erro ao validar. Tente novamente.';
+        msgEl.className = 'text-xs font-bold mt-2 text-red-500';
+      });
+  }
+
+  function renderizarEtapa3() {
+    var subtotal = getTotal();
+    var desconto = checkout.cupom ? checkout.cupom.desconto : 0;
+    var taxa     = checkout.tipoEntrega === 'entrega' ? checkout.taxaEntrega : 0;
+    var total    = Math.max(0, subtotal - desconto + taxa);
+
+    document.getElementById('tituloCheckout').innerText    = 'Pagamento';
+    document.getElementById('subtituloCheckout').innerText = 'Quase lá!';
+    document.getElementById('btnAcaoCheckout').innerHTML =
+      '<i class="fa-brands fa-whatsapp text-lg mr-1"></i>Confirmar Pedido';
+    document.getElementById('btnAcaoCheckout').className =
+      'w-full btn-confirm text-white font-black py-4 rounded-2xl ' +
+      'flex items-center justify-center gap-2 text-sm';
+
+    var mets = [
+      { id: 'pix',      label: 'PIX',      icon: 'fa-solid fa-qrcode' },
+      { id: 'cartao',   label: 'Cartão',   icon: 'fa-solid fa-credit-card' },
+      { id: 'dinheiro', label: 'Dinheiro', icon: 'fa-solid fa-money-bill-wave' }
+    ];
+
+    var itensResumo = carrinho.itens.map(function (it) {
+      return '<div class="flex justify-between text-sm">' +
+             '<span class="text-gray-500 truncate max-w-[180px] font-medium">' + esc(it.descricao) + '</span>' +
+             '<span class="font-black text-gray-800 flex-shrink-0 ml-2">' + fmt(it.preco) + '</span></div>';
+    }).join('');
+
+    var pgtoCards = mets.map(function (m) {
+      var sel = checkout.pagamento === m.id;
+      return '<label class="flex flex-col items-center justify-center p-3 border-2 rounded-2xl ' +
+             'cursor-pointer transition no-select ' +
+             (sel ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-white hover:border-purple-200') + '">' +
+             '<input type="radio" name="pgto" value="' + m.id + '" class="hidden" ' +
+             (sel ? 'checked' : '') +
+             ' onchange="checkout.pagamento=this.value; renderizarEtapa3()">' +
+             '<i class="' + m.icon + ' text-2xl mb-2 ' +
+             (sel ? 'text-purple-600' : 'text-gray-300') + '"></i>' +
+             '<span class="font-black text-xs text-gray-700">' + m.label + '</span></label>';
+    }).join('');
+
+    // Campo de troco: aparece só quando pagamento = dinheiro
+    var vPago = checkout.valorPago || 0;
+    var campoTroco = checkout.pagamento === 'dinheiro'
+      ? '<div class="mt-1 p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl">' +
+        '<label class="block text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2">' +
+        '<i class="fa-solid fa-money-bill-wave mr-1"></i>Vai pagar com quanto?</label>' +
+        '<input id="ck_valorPago" type="number" inputmode="decimal" step="0.50" ' +
+        'min="' + total.toFixed(2) + '" value="' + (vPago || '') + '" ' +
+        'oninput="checkout.valorPago=parseFloat(this.value)||0; renderizarEtapa3()" ' +
+        'placeholder="' + total.toFixed(2) + '" ' +
+        'class="campo-texto w-full text-center font-black text-lg mt-1"/>' +
+        (vPago > 0 && vPago >= total
+          ? '<div class="mt-2 text-center font-black text-green-700 text-sm bg-green-50 rounded-xl p-2">' +
+            '<i class="fa-solid fa-rotate-left mr-1"></i>Troco: <strong>' +
+            fmt(Math.max(0, vPago - total)) + '</strong></div>'
+          : vPago > 0 && vPago < total
+            ? '<div class="mt-2 text-center font-bold text-red-500 text-xs py-1">' +
+              '<i class="fa-solid fa-triangle-exclamation"></i> Valor menor que o total</div>'
+            : '<div class="mt-2 text-center text-amber-600 text-xs font-medium">Informe o valor para calcular o troco</div>') +
+        '</div>'
+      : '';
+
+    var html =
+      '<div class="space-y-4 fade-in">' +
+      '<div class="bg-[#f9f7ff] p-4 rounded-2xl border border-purple-50 space-y-2">' +
+      '<h4 class="font-black text-gray-500 text-[10px] uppercase tracking-widest mb-3">Resumo</h4>' +
+      itensResumo +
+      '<div class="border-t border-purple-100 pt-2 mt-2 space-y-1">' +
+      (desconto > 0
+        ? '<div class="flex justify-between text-sm"><span class="text-gray-500 font-medium">Desconto</span>' +
+          '<span class="font-black text-green-600">-' + fmt(desconto) + '</span></div>' : '') +
+      (taxa > 0
+        ? '<div class="flex justify-between text-sm"><span class="text-gray-500 font-medium">Entrega (' +
+          esc(checkout.nomeBairro) + ')</span>' +
+          '<span class="font-black text-gray-700">+' + fmt(taxa) + '</span></div>' : '') +
+      '<div class="flex justify-between font-black text-gray-800 pt-1">' +
+      '<span>TOTAL</span><span class="text-green-600">' + fmt(total) + '</span></div>' +
+      '</div></div>' +
+      '<div><label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Pagamento</label>' +
+      '<div class="grid grid-cols-3 gap-2">' + pgtoCards + '</div></div>' +
+      campoTroco +
+      '<div class="bg-blue-50 p-3.5 rounded-2xl border border-blue-100 text-xs text-blue-700 ' +
+      'font-medium flex gap-2 items-start">' +
+      '<i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0 text-blue-400"></i>' +
+      '<span>Ao confirmar, você será redirecionado ao WhatsApp para finalizar com a loja.</span>' +
+      '</div></div>';
+
+    document.getElementById('corpoCheckout').innerHTML = html;
+  }
+
+  function voltarEtapa() {
+    if (checkout.etapa > 1) { checkout.etapa--; renderizarEtapaAtual(); }
+  }
+
+  function avancarEtapa() {
+    if (checkout.etapa === 1) {
+      if (carrinho.itens.length === 0) { alert('Adicione pelo menos um item.'); return; }
+      checkout.etapa = 2; renderizarEtapaAtual();
+
+    } else if (checkout.etapa === 2) {
+      var nome = document.getElementById('ck_nome').value.trim();
+      var tel  = document.getElementById('ck_tel').value.trim();
+      if (!nome) { alert('Por favor, informe seu nome.'); return; }
+      if (!tel)  { alert('Por favor, informe seu WhatsApp.'); return; }
+      if (checkout.tipoEntrega === 'entrega') {
+        var bairroEl = document.getElementById('ck_bairro');
+        if (!bairroEl || !bairroEl.value) { alert('Selecione o bairro de entrega.'); return; }
+        var endEl = document.getElementById('ck_end');
+        if (!endEl || !endEl.value.trim()) { alert('Informe o endereço de entrega.'); return; }
+        checkout.endereco = endEl.value.trim();
+      }
+      checkout.nome = nome; checkout.telefone = tel;
+      checkout.etapa = 3; renderizarEtapaAtual();
+
+    } else if (checkout.etapa === 3) {
+      if (!checkout.pagamento) { alert('Selecione a forma de pagamento.'); return; }
+      confirmarPedido();
+    }
+  }
+
+  function confirmarPedido() {
+    var btn = document.getElementById('btnAcaoCheckout');
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Salvando...';
+    btn.disabled  = true;
+
+    var subtotal = getTotal();
+    var desconto = checkout.cupom ? checkout.cupom.desconto : 0;
+    var taxa     = checkout.tipoEntrega === 'entrega' ? checkout.taxaEntrega : 0;
+    var total    = Math.max(0, subtotal - desconto + taxa);
+    var endereco = checkout.tipoEntrega === 'entrega'
+      ? checkout.nomeBairro + ' — ' + checkout.endereco
+      : 'Retirada na loja';
+
+    var valorPagoFinal = checkout.pagamento === 'dinheiro' ? (checkout.valorPago || 0) : 0;
+    var trocoFinal     = checkout.pagamento === 'dinheiro' && valorPagoFinal >= total
+                         ? Math.round((valorPagoFinal - total) * 100) / 100 : 0;
+
+    var dadosPedido = {
+      nomeCliente: checkout.nome, telefone: checkout.telefone,
+      endereco: endereco,
+      itens: carrinho.itens.map(function (i) {
+        return { descricao: i.descricao, detalhes: i.detalhes, preco: i.preco };
+      }),
+      subtotal: subtotal, desconto: desconto,
+      taxaEntrega: taxa, total: total,
+      pagamento: checkout.pagamento.toUpperCase(),
+      valorPago: valorPagoFinal,
+      troco:     trocoFinal
+    };
+
+    api('POST', '/api/pedidos/online-pix', dadosPedido)
+      .then(function (res) {
+        var idVenda = (res && res.sucesso && res.id) ? res.id : 'LOCAL';
+        abrirWhatsApp(dadosPedido, idVenda);
+        mostrarSucesso();
+      })
+      .catch(function () {
+        abrirWhatsApp(dadosPedido, 'LOCAL');
+        mostrarSucesso();
+      });
+  }
+
+  function abrirWhatsApp(d, idVenda) {
+    var wpp = dadosBase.configuracoes.WhatsApp_Numero;
+    if (!wpp) return;
+    var numero = wpp.toString().replace(/\D/g, '');
+    var nomeLoja = dadosBase.configuracoes.Nome_Loja || '';
+    var itensTxt = d.itens.map(function (i) {
+      return '▶ *' + i.descricao + '* — ' + fmt(i.preco) + '\n   _' + i.detalhes + '_';
+    }).join('\n\n');
+    var msg  = '🍇 *' + nomeLoja + '*\n';
+        msg += '📋 *NOVO PEDIDO' + (idVenda !== 'LOCAL' ? ' — #' + idVenda : '') + '*\n\n';
+        msg += '👤 *Nome:* ' + d.nomeCliente + '\n';
+        msg += '📱 *WhatsApp:* ' + d.telefone + '\n';
+        msg += '📍 *Entrega:* ' + d.endereco + '\n\n';
+        msg += '━━━━━━━━━━━━\n*ITENS:*\n\n' + itensTxt + '\n\n━━━━━━━━━━━━\n';
+        msg += 'Subtotal: ' + fmt(d.subtotal) + '\n';
+    if (d.desconto > 0)    msg += 'Desconto: -' + fmt(d.desconto) + '\n';
+    if (d.taxaEntrega > 0) msg += 'Taxa entrega: +' + fmt(d.taxaEntrega) + '\n';
+        msg += '*TOTAL: ' + fmt(d.total) + '*\n\n';
+        msg += '💳 *Pagamento:* ' + d.pagamento;
+    if (d.pagamento === 'DINHEIRO' && d.valorPago > 0) {
+      msg += '\n💵 *Vai pagar com:* ' + fmt(d.valorPago);
+      if (d.troco > 0) msg += '\n🪙 *Troco:* ' + fmt(d.troco);
+    }
+    window.open('https://wa.me/55' + numero + '?text=' + encodeURIComponent(msg), '_blank');
+  }
+
+  function mostrarSucesso() {
+    // Limpa carrinho imediatamente — pedido já foi enviado
+    carrinho.itens = [];
+    checkout.cupom = null;
+    atualizarUI_Carrinho();
+
+    document.getElementById('corpoCheckout').innerHTML =
+      '<div class="flex flex-col items-center justify-center py-10 fade-in">' +
+      '<div class="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mb-5 ' +
+      'shadow-lg shadow-green-100 border-2 border-green-100">' +
+      '<i class="fa-solid fa-check text-4xl text-green-500"></i></div>' +
+      '<h3 class="text-2xl font-black text-gray-900 mb-2">Pedido Enviado!</h3>' +
+      '<p class="text-gray-400 text-sm font-medium text-center max-w-xs leading-relaxed">' +
+      'Seu pedido foi registrado. Você foi redirecionado ao WhatsApp para confirmar com a loja.</p>' +
+      '<button onclick="fecharCheckout()" ' +
+      'class="mt-8 btn-primary text-white font-black py-3.5 px-8 rounded-2xl text-sm ' +
+      'inline-flex items-center gap-2">' +
+      '<i class="fa-solid fa-plus text-xs"></i>Fazer Novo Pedido</button></div>';
+    document.getElementById('btnAcaoCheckout').classList.add('hidden');
+    var btnV = document.getElementById('btnVoltarCheckout');
+    btnV.classList.add('hidden'); btnV.classList.remove('flex');
+  }
+
+  function limparCarrinho() {
+    carrinho.itens = [];
+    document.getElementById('btnAcaoCheckout').classList.remove('hidden');
+    atualizarUI_Carrinho();
+  }
+
+  </script>
+
+  <!-- ══════════════════════════════
+       MODAL: RASTREAMENTO DE PEDIDO
+  ══════════════════════════════ -->
+  <div id="modalRastreio"
+       class="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="fecharRastreamento()"></div>
+    <div class="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl
+                max-h-[92vh] overflow-y-auto">
+      <!-- Handle mobile -->
+      <div class="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-3 sm:hidden"></div>
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-purple-100 rounded-2xl flex items-center justify-center">
+            <i class="fa-solid fa-location-arrow text-purple-600"></i>
+          </div>
+          <div>
+            <h3 class="font-black text-gray-900 text-base leading-tight">Acompanhar Pedido</h3>
+            <p class="text-[11px] text-gray-400 font-medium">Digite o ID ou seu telefone</p>
+          </div>
+        </div>
+        <button onclick="fecharRastreamento()"
+                class="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center
+                       justify-center transition text-gray-500">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <!-- Corpo -->
+      <div class="px-5 py-5">
+        <div class="flex gap-2 mb-5">
+          <input id="inpRastreio" type="text"
+                 placeholder="Ex: VND-12345678  ou  (84) 99999-0000"
+                 class="campo-texto flex-1 text-sm"
+                 onkeydown="if(event.key==='Enter') consultarPedido()"
+                 inputmode="text"/>
+          <button onclick="consultarPedido()"
+                  class="btn-primary text-white font-black px-4 py-3 rounded-2xl text-sm
+                         flex items-center gap-1 flex-shrink-0">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+        <div id="resultadoRastreio"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ── RASTREAMENTO ───────────────────────────────────────────
+  function abrirRastreamento() {
+    document.getElementById('inpRastreio').value = '';
+    document.getElementById('resultadoRastreio').innerHTML = '';
+    document.getElementById('modalRastreio').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function(){ document.getElementById('inpRastreio').focus(); }, 200);
+  }
+
+  var _rastreioTimer = null;
+  var _rastreioQuery = '';
+  var _STATUS_FINAIS = ['ENTREGUE','CANCELADO'];
+
+  function fecharRastreamento() {
+    document.getElementById('modalRastreio').classList.add('hidden');
+    document.body.style.overflow = '';
+    if(_rastreioTimer){ clearInterval(_rastreioTimer); _rastreioTimer=null; }
+  }
+
+  function consultarPedido() {
+    var q   = document.getElementById('inpRastreio').value.trim();
+    var res = document.getElementById('resultadoRastreio');
+    if (q.length < 5) {
+      res.innerHTML = '<div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">' +
+        '<p class="text-amber-700 font-bold text-sm">Digite pelo menos 5 caracteres.</p></div>';
+      return;
+    }
+    if(_rastreioTimer){ clearInterval(_rastreioTimer); _rastreioTimer=null; }
+    _rastreioQuery = q;
+    res.innerHTML = '<div class="flex justify-center py-8">' +
+      '<div class="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div></div>';
+
+    api('GET', '/api/pedidos/acompanhamento?q=' + encodeURIComponent(q))
+      .then(function(data){
+        renderRastreio(data);
+        // Auto-atualiza a cada 30s enquanto o pedido não estiver finalizado
+        if(data && !data.erro && _STATUS_FINAIS.indexOf(data.Status||'')<0){
+          _rastreioTimer=setInterval(function(){
+            var modal=document.getElementById('modalRastreio');
+            if(!modal||modal.classList.contains('hidden')){ clearInterval(_rastreioTimer); _rastreioTimer=null; return; }
+            api('GET', '/api/pedidos/acompanhamento?q=' + encodeURIComponent(_rastreioQuery))
+              .then(function(d){
+                renderRastreio(d);
+                if(d && !d.erro && _STATUS_FINAIS.indexOf(d.Status||'')>=0){
+                  clearInterval(_rastreioTimer); _rastreioTimer=null;
+                }
+              })
+              .catch(function(){});
+          }, 30000);
+        }
+      })
+      .catch(function(){
+        document.getElementById('resultadoRastreio').innerHTML =
+          '<div class="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">' +
+          '<i class="fa-solid fa-triangle-exclamation text-red-400 text-2xl mb-2 block"></i>' +
+          '<p class="text-red-700 font-bold text-sm">Erro ao consultar. Verifique sua conexão.</p></div>';
+      });
+  }
+
+  function renderRastreio(data) {
+    var res = document.getElementById('resultadoRastreio');
+    if (!data || data.erro) {
+      res.innerHTML = '<div class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center">' +
+        '<i class="fa-solid fa-magnifying-glass text-gray-300 text-3xl mb-3 block"></i>' +
+        '<p class="text-gray-500 font-bold text-sm">' + esc(data ? data.erro : 'Pedido não encontrado.') + '</p>' +
+        '<p class="text-gray-400 text-xs mt-1 font-medium">Verifique o número e tente novamente.</p></div>';
+      return;
+    }
+
+    // Timeline por tipo de pedido
+    var passos = data.Origem === 'BALCAO'
+      ? [
+          { s: 'NOVO',       icon: 'fa-bell',        label: 'Recebido'   },
+          { s: 'PREPARANDO', icon: 'fa-fire-burner',  label: 'Preparando' },
+          { s: 'PRONTO',     icon: 'fa-box-open',     label: 'Pronto'     },
+          { s: 'ENTREGUE',   icon: 'fa-check-circle', label: 'Entregue'   }
+        ]
+      : [
+          { s: 'NOVO',        icon: 'fa-bell',           label: 'Recebido'    },
+          { s: 'EM_MONTAGEM', icon: 'fa-blender',        label: 'Montando'    },
+          { s: 'A_CAMINHO',   icon: 'fa-motorcycle',     label: 'A caminho'   },
+          { s: 'ENTREGUE',    icon: 'fa-check-circle',   label: 'Entregue'    }
+        ];
+
+    var ordem = ['NOVO','PREPARANDO','PRONTO','ENTREGUE','EM_MONTAGEM','A_CAMINHO','CANCELADO'];
+    var statusAtual = data.Status;
+    var iAtual = passos.findIndex ? passos.findIndex(function(p){ return p.s === statusAtual; })
+                                  : (function(){ for(var x=0;x<passos.length;x++) if(passos[x].s===statusAtual) return x; return -1; })();
+
+    var isCancelado = statusAtual === 'CANCELADO';
+
+    var timelineHTML = isCancelado
+      ? '<div class="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl p-4 mb-4">' +
+        '<div class="w-10 h-10 bg-red-100 rounded-2xl flex items-center justify-center flex-shrink-0">' +
+        '<i class="fa-solid fa-ban text-red-500"></i></div>' +
+        '<div><p class="font-black text-red-700">Pedido Cancelado</p>' +
+        '<p class="text-xs text-red-400 font-medium">Entre em contato com a loja para mais informações.</p></div></div>'
+      : '<div class="flex items-center justify-between mb-5 relative">' +
+        '<div class="absolute top-5 left-5 right-5 h-0.5 bg-gray-100 z-0"></div>' +
+        passos.map(function(p, idx) {
+          var feito    = idx <= iAtual;
+          var atual    = idx === iAtual;
+          var bgC      = feito ? 'bg-purple-600' : 'bg-gray-100';
+          var textC    = feito ? 'text-white' : 'text-gray-300';
+          var labelC   = atual ? 'text-purple-600 font-black' : (feito ? 'text-gray-700 font-bold' : 'text-gray-300 font-medium');
+          var ring     = atual ? ' ring-4 ring-purple-200' : '';
+          return '<div class="flex flex-col items-center gap-1.5 z-10 flex-1">' +
+            '<div class="w-10 h-10 ' + bgC + ring + ' rounded-2xl flex items-center justify-center">' +
+            '<i class="fa-solid ' + p.icon + ' text-sm ' + textC + '"></i></div>' +
+            '<span class="text-[9px] ' + labelC + ' text-center leading-tight">' + p.label + '</span></div>';
+        }).join('') + '</div>';
+
+    // Card do pedido
+    var entregadorHTML = (data.Origem !== 'BALCAO' && data.Entregador_Nome)
+      ? '<div class="flex items-center gap-2 mt-3 bg-blue-50 border border-blue-100 rounded-xl p-2.5">' +
+        '<i class="fa-solid fa-motorcycle text-blue-500 text-sm flex-shrink-0"></i>' +
+        '<span class="text-xs font-bold text-blue-700">Entregador: ' + esc(data.Entregador_Nome) + '</span></div>'
+      : '';
+
+    var itensHTML = data.itensResumo
+      ? '<div class="mt-4 bg-gray-50 rounded-2xl p-3">' +
+        '<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Itens do pedido</p>' +
+        data.itensResumo.split('\n').filter(Boolean).map(function(l){
+          return '<p class="text-xs text-gray-600 font-medium py-0.5 border-b border-gray-100 last:border-0">' + esc(l) + '</p>';
+        }).join('') + '</div>'
+      : '';
+
+    res.innerHTML = '<div class="space-y-4 fade-in">' +
+      timelineHTML +
+      '<div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">' +
+      '<div class="flex justify-between items-start mb-1">' +
+      '<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">#' + esc(data.ID_Venda) + '</span>' +
+      '<span class="text-[10px] font-bold text-gray-400">' + esc(data.Data_Hora) + '</span>' +
+      '</div>' +
+      (data.nomeCliente ? '<p class="font-black text-gray-800 text-sm">' + esc(data.nomeCliente) + '</p>' : '') +
+      '<p class="text-xs text-gray-500 font-medium mt-0.5">' + esc(data.Origem) + ' · ' +
+      '<span class="font-black text-green-600">R$ ' + parseFloat(data.Total_Final||0).toFixed(2).replace('.',',') + '</span></p>' +
+      entregadorHTML + itensHTML + '</div>' +
+      '</div>';
+  }
+  // ──────────────────────────────────────────────────────────
+
+  // Injeta redes sociais e endereço no footer
+  function _renderizarFooterSocial(cfg) {
+    var linksDiv = document.getElementById('footerSocial');
+    if (linksDiv) {
+      var btns = [];
+      if (cfg.WhatsApp_Link) {
+        btns.push('<a href="'+esc(cfg.WhatsApp_Link)+'" target="_blank" ' +
+          'class="flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 ' +
+          'font-black text-xs px-3 py-2 rounded-full hover:bg-green-100 transition">' +
+          '<i class="fa-brands fa-whatsapp text-base"></i>WhatsApp</a>');
+      }
+      if (cfg.Instagram_URL) {
+        btns.push('<a href="'+esc(cfg.Instagram_URL)+'" target="_blank" ' +
+          'class="flex items-center gap-1.5 bg-pink-50 border border-pink-200 text-pink-700 ' +
+          'font-black text-xs px-3 py-2 rounded-full hover:bg-pink-100 transition">' +
+          '<i class="fa-brands fa-instagram text-base"></i>Instagram</a>');
+      }
+      if (cfg.Facebook_URL) {
+        btns.push('<a href="'+esc(cfg.Facebook_URL)+'" target="_blank" ' +
+          'class="flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 ' +
+          'font-black text-xs px-3 py-2 rounded-full hover:bg-blue-100 transition">' +
+          '<i class="fa-brands fa-facebook text-base"></i>Facebook</a>');
+      }
+      if (btns.length) { linksDiv.innerHTML = btns.join(''); linksDiv.classList.remove('hidden'); }
+    }
+    var endDiv = document.getElementById('footerEndereco');
+    var endTxt = document.getElementById('footerEnderecoTxt');
+    if (endDiv && endTxt && cfg.Endereco_Loja) {
+      endTxt.textContent = cfg.Endereco_Loja;
+      endDiv.classList.remove('hidden');
+    }
+  }
+  </script>
+
+</body>
+</html>
