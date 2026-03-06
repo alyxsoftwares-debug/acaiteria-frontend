@@ -930,12 +930,20 @@ function construirUI(){
   document.getElementById('sidebarNome').textContent=u.nome||'Usuário';
   document.getElementById('sidebarCargo').textContent=u.cargo||'';
   var avatarEl=document.getElementById('sidebarAvatar');
-  if(u.fotoPerfil){
-    avatarEl.textContent='';
-    avatarEl.innerHTML='<img src="'+esc(u.fotoPerfil)+'" alt="'+esc(u.nome)+'" onerror="this.parentElement.textContent=\''+((u.nome||'U')[0].toUpperCase())+'\';">';
-  } else {
-    avatarEl.textContent=(u.nome||'U')[0].toUpperCase();
-  }
+      
+      // Busca a foto atualizada direto da lista de usuários do banco
+      var fotoUrl = u.fotoPerfil || '';
+      if (ST.dados && ST.dados.usuarios) {
+        var userDb = ST.dados.usuarios.find(function(x) { return x.Nome === u.nome; });
+        if (userDb && userDb.Foto_Perfil) fotoUrl = userDb.Foto_Perfil;
+      }
+
+      if(fotoUrl){
+        avatarEl.textContent='';
+        avatarEl.innerHTML='<img src="'+esc(fotoUrl)+'" alt="'+esc(u.nome)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.parentElement.textContent=\''+((u.nome||'U')[0].toUpperCase())+'\';">';
+      } else {
+        avatarEl.textContent=(u.nome||'U')[0].toUpperCase();
+      }
 
   // Atualiza logo sidebar
   var logoIcon=document.getElementById('sidebarLogoIcon');
@@ -3097,8 +3105,23 @@ function salvarUsuarioForm(){
   var d={ID_Usuario:id,Nome:document.getElementById('f_nome').value.trim(),Login:document.getElementById('f_login').value.trim(),Senha:senhaDigitada||senhaAnterior,Cargo:document.getElementById('f_cargo').value,Status:document.getElementById('f_status').value,Foto_Perfil:document.getElementById('f_foto_perfil').value.trim()};
   if(!d.Nome||!d.Login){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Nome e login são obrigatórios.</p>'; return; }
   if(!d.Senha){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Senha obrigatória para novos usuários.</p>'; return; }
-  api('POST', L('/usuarios'), d).then(function(res){ if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); navegarPara('abaConfig'); } else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; }).catch(function(e){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; });
-}
+  api('POST', L('/usuarios'), d).then(function(res){ 
+        if(res.sucesso){ 
+          fecharModal('modalFormCrud'); 
+          toast(res.mensagem,'success'); 
+          // Recarrega o banco e atualiza a barra lateral na hora
+          api('GET', L('/dados-config')).then(function(dados){
+            if(ST.dados) { ST.dados.usuarios = dados.usuarios || []; }
+            construirUI();
+            renderSecaoConfig();
+          });
+        } else {
+          document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; 
+        }
+      }).catch(function(e){ 
+        document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; 
+      });
+    }
 
 function renderBairrosRows(){
   var items=(ST.dados&&ST.dados.bairros)||[];
