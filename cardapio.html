@@ -369,7 +369,7 @@
           </div>
         </div>
         <p class="text-[9px] text-gray-300 font-medium mt-1">
-          © 2025 · Todos os direitos reservados
+          © 2026 · Todos os direitos reservados
         </p>
       </div>
     </div>
@@ -1435,9 +1435,10 @@
         '<i class="fa-solid fa-money-bill-wave mr-1"></i>Vai pagar com quanto?</label>' +
         '<input id="ck_valorPago" type="number" inputmode="decimal" step="0.50" ' +
         'min="' + total.toFixed(2) + '" value="' + (vPago || '') + '" ' +
-        'oninput="checkout.valorPago=parseFloat(this.value)||0; renderizarEtapa3()" ' +
+        'oninput="checkout.valorPago=parseFloat(this.value)||0; calcTrocoOnline()" ' +
         'placeholder="' + total.toFixed(2) + '" ' +
         'class="campo-texto w-full text-center font-black text-lg mt-1"/>' +
+        '<div id="msgTrocoWrapper">' +
         (vPago > 0 && vPago >= total
           ? '<div class="mt-2 text-center font-black text-green-700 text-sm bg-green-50 rounded-xl p-2">' +
             '<i class="fa-solid fa-rotate-left mr-1"></i>Troco: <strong>' +
@@ -1446,7 +1447,7 @@
             ? '<div class="mt-2 text-center font-bold text-red-500 text-xs py-1">' +
               '<i class="fa-solid fa-triangle-exclamation"></i> Valor menor que o total</div>'
             : '<div class="mt-2 text-center text-amber-600 text-xs font-medium">Informe o valor para calcular o troco</div>') +
-        '</div>'
+        '</div></div>'
       : '';
 
     var html =
@@ -1475,6 +1476,25 @@
       '</div></div>';
 
     document.getElementById('corpoCheckout').innerHTML = html;
+  }
+
+  function calcTrocoOnline() {
+    var subtotal = getTotal();
+    var desconto = checkout.cupom ? checkout.cupom.desconto : 0;
+    var taxa     = checkout.tipoEntrega === 'entrega' ? checkout.taxaEntrega : 0;
+    var total    = Math.max(0, subtotal - desconto + taxa);
+    var vPago    = checkout.valorPago || 0;
+    var divMsg   = document.getElementById('msgTrocoWrapper');
+    
+    if(!divMsg) return;
+    
+    if (vPago > 0 && vPago >= total) {
+      divMsg.innerHTML = '<div class="mt-2 text-center font-black text-green-700 text-sm bg-green-50 rounded-xl p-2"><i class="fa-solid fa-rotate-left mr-1"></i>Troco: <strong>' + fmt(Math.max(0, vPago - total)) + '</strong></div>';
+    } else if (vPago > 0 && vPago < total) {
+      divMsg.innerHTML = '<div class="mt-2 text-center font-bold text-red-500 text-xs py-1"><i class="fa-solid fa-triangle-exclamation"></i> Valor menor que o total</div>';
+    } else {
+      divMsg.innerHTML = '<div class="mt-2 text-center text-amber-600 text-xs font-medium">Informe o valor para calcular o troco</div>';
+    }
   }
 
   function voltarEtapa() {

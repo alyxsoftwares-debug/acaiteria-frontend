@@ -459,7 +459,7 @@ table.tbl tr:last-child td{border-bottom:none}
 
     <div class="sidebar-logo">
       <div class="logo-icon" id="sidebarLogoIcon" style="overflow:hidden;padding:0">🍇</div>
-      <div class="logo-text" id="sidebarLogoText">Carregando...<br><span style="font-size:10px;opacity:.6">Painel v4.0</span></div>
+      <div class="logo-text" id="sidebarLogoText">Carregando...<br><span style="font-size:10px;opacity:.6">Painel de Controle</span></div>
     </div>
 
     <div class="sidebar-user">
@@ -944,7 +944,7 @@ function construirUI(){
     logoIcon.style.background='none';
   }
   var logoText=document.getElementById('sidebarLogoText');
-  if(logoText) logoText.innerHTML=esc(nomeLoja)+'<br><span style="font-size:10px;opacity:.6">Painel v4.0</span>';
+  if(logoText) logoText.innerHTML=esc(nomeLoja)+'<br><span style="font-size:10px;opacity:.6">Painel de Controle</span>';
 
   // Atualiza logo loading overlay e Favicon da aba de forma otimizada
   var ldrEmoji=document.getElementById('ldrLogoEmoji');
@@ -2966,7 +2966,7 @@ function salvarConfiguracoes(){
         }
         // Atualiza nome da loja na sidebar
         var nmEl=document.getElementById('sidebarLogoText');
-        if(nmEl && dados['Nome_Loja']) nmEl.innerHTML=esc(dados['Nome_Loja'])+'<br><span style="font-size:10px;opacity:.6">Painel v4.0</span>';
+        if(nmEl && dados['Nome_Loja']) nmEl.innerHTML=esc(dados['Nome_Loja'])+'<br><span style="font-size:10px;opacity:.6">Painel de Controle</span>';
         // Re-renderiza o card de configurações com os novos valores
         var body=document.getElementById('configLojaBody');
         if(body) body.innerHTML=renderConfigLoja();
