@@ -533,25 +533,34 @@
   // ══════════════════════════════════════════════════════════
   // 1. INICIALIZAÇÃO
   // ══════════════════════════════════════════════════════════
-  window.onload = function () {
   // ═══ CONFIGURAÇÃO DA API ════════════════════════════════
-  var API_URL = 'https://acaiteria-backend-z7n0.onrender.com'; // ← Altere para sua URL do Render
+  var API_URL = 'https://acaiteria-backend-z7n0.onrender.com';
 
   /**
-   * Wrapper fetch — substitui google.script.run
+   * Wrapper fetch com timeout de 25s — acessível em todo o script
    */
   function api(method, path, body) {
-    var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+    var controller = new AbortController();
+    var tid = setTimeout(function() { controller.abort(); }, 25000);
+    var opts = {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal
+    };
     if (body && method !== 'GET') opts.body = JSON.stringify(body);
-    return fetch(API_URL + path, opts).then(function(r) { return r.json(); });
+    return fetch(API_URL + path, opts)
+      .then(function(r) { clearTimeout(tid); return r.json(); })
+      .catch(function(e) { clearTimeout(tid); throw e; });
   }
 
   // ═══════════════════════════════════════════════════════════
 
+  window.onload = function () {
+
   var _loadTimeout = setTimeout(function () {
     var ldr = document.getElementById('loadingCardapio');
     if (ldr && ldr.style.display !== 'none') {
-      mostrarErroCardapio('O servidor demorou para responder. Verifique se o script está publicado como Web App.');
+      mostrarErroCardapio('O servidor demorou para responder. Por favor, aguarde um momento e atualize a página.');
     }
   }, 25000);
 
@@ -842,8 +851,15 @@
                        'cursor-not-allowed transition-all flex items-center justify-center gap-2 ' +
                        'text-sm border border-gray-200';
     }
-    document.getElementById('subtotalSidebar').innerText = fmtTot;
-    document.getElementById('totalSidebar').innerText    = fmtTot;
+    var subtotalBox = document.getElementById('subtotalSidebar');
+    if (subtotalBox) {
+      subtotalBox.innerText = fmtTot;
+    }
+
+    var totalBox = document.getElementById('totalSidebar');
+    if (totalBox) {
+      totalBox.innerText = fmtTot;
+    }
 
     renderizarCarrinhoSidebar();
     // Se loja está fechada, desabilitar botões de checkout
@@ -1179,8 +1195,6 @@
       'w-full btn-primary text-white font-black py-4 rounded-2xl ' +
       'flex items-center justify-center gap-2 text-sm';
 
-    var retiradaAtiva = dadosBase.configuracoes.Retirada_Loja_Ativo !== 'NAO';
-    if (!retiradaAtiva && checkout.tipoEntrega === 'retirada') checkout.tipoEntrega = 'entrega';
     var isEntrega  = checkout.tipoEntrega === 'entrega';
     var semBairros = dadosBase.bairros.length === 0;
 
@@ -1295,7 +1309,7 @@
             return;
           }
           // Calcula desconto: PERCENTUAL usa subtotal atual; VALOR usa direto
-          var subtotalAtual = checkout.itens.reduce(function(s,i){ return s+(i.preco||0); }, 0);
+          var subtotalAtual = carrinho.itens.reduce(function(s,i){ return s+(i.preco||0); }, 0);
           var descCalculado = res.tipo === 'PERCENTUAL'
             ? Math.round(subtotalAtual * (res.valor / 100) * 100) / 100
             : (res.valor || res.desconto || 0);
@@ -1470,15 +1484,18 @@
     };
 
     api('POST', '/api/pedidos/online-pix', dadosPedido)
-      .then(function (res) {
-        var idVenda = (res && res.sucesso && res.id) ? res.id : 'LOCAL';
-        abrirWhatsApp(dadosPedido, idVenda);
-        mostrarSucesso();
-      })
-      .catch(function () {
-        abrirWhatsApp(dadosPedido, 'LOCAL');
-        mostrarSucesso();
-      });
+    .then(function(res) {
+      var idVenda = (res && res.sucesso && res.id) ? res.id : 'LOCAL';
+      abrirWhatsApp(dadosPedido, idVenda);
+      mostrarSucesso();
+    })
+    .catch(function() {
+      // Falha de rede: abre WhatsApp na mesma e libera o botão
+      btn.disabled = false;
+      btn.innerHTML = 'Confirmar Pedido <i class="fa-solid fa-check ml-1"></i>';
+      abrirWhatsApp(dadosPedido, 'LOCAL');
+      mostrarSucesso();
+    });
   }
 
   function abrirWhatsApp(d, idVenda) {
