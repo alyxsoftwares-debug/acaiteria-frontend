@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="icon" href="https://seu-link-da-logo-alyxsoftwares.png">
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <title>Painel — AlyxSoftwares</title>
@@ -582,6 +582,31 @@ table.tbl tr:last-child td{border-bottom:none}
 </div>
 
 <script>
+
+async function carregarFaviconDinamico(lojaId) {
+    try {
+        const response = await fetch(`https://alyxsoftwares-acaiteria.onrender.com/api/lojas/${lojaId}/cardapio`);
+        const dados = await response.json();
+        
+        if (dados.configuracoes && dados.configuracoes.URL_Logo) {
+            let link = document.querySelector("link[rel~='icon']");
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = 'icon';
+                document.head.appendChild(link);
+            }
+            link.href = dados.configuracoes.URL_Logo;
+        }
+    } catch (error) {
+        console.error("Erro ao carregar favicon:", error);
+    }
+}
+
+// Chame a função logo após descobrir quem é o lojaId
+const urlParams = new URLSearchParams(window.location.search);
+const lojaId = urlParams.get('loja');
+if (lojaId) carregarFaviconDinamico(lojaId);
+
 // ═══ CONFIGURAÇÃO DA API ════════════════════════════════════════════════════
 // Altere API_URL para a URL real do seu backend no Render após o deploy.
 var API_URL = 'https://alyxsoftwares-acaiteria.onrender.com'; // ← URL do seu backend no Render
