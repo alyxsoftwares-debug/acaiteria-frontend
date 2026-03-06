@@ -596,7 +596,7 @@ var LOJA_ID = (function(){
 function L(path){ return '/api/lojas/'+LOJA_ID+path; }
 
 /**
- * Wrapper fetch — substitui google.script.run em toda a aplicação.
+ * Wrapper fetch — comunicação com a API do backend.
  * @param {string} method  GET | POST | PATCH | DELETE
  * @param {string} path    ex: '/api/pedidos/dia'
  * @param {Object} [body]  payload JSON (omitido em GET/DELETE por id via path)
@@ -777,7 +777,7 @@ function logout(){
   sessionStorage.removeItem('pdacai_user');
   
   // Na nova arquitetura redireciona direto para a página de login
-  window.top.location.href = 'login.html'+(LOJA_ID?'?loja='+encodeURIComponent(LOJA_ID):'');
+  window.location.href = 'login.html'+(LOJA_ID?'?loja='+encodeURIComponent(LOJA_ID):'');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -786,7 +786,7 @@ function logout(){
 function init(){
   if(!LOJA_ID){
     // Sessão sem loja_id — volta para raiz
-    window.top.location.href = 'login.html';
+    window.location.href = 'login.html';
     return;
   }
   var saved=sessionStorage.getItem('pdacai_user');
@@ -796,7 +796,7 @@ function init(){
       if(!ST.usuario.loja_id){
         // Sessão antiga sem loja_id — força novo login
         sessionStorage.clear();
-        window.top.location.href = 'login.html?loja='+encodeURIComponent(LOJA_ID);
+        window.location.href = 'login.html?loja='+encodeURIComponent(LOJA_ID);
         return;
       }
       carregarDados();
@@ -809,7 +809,7 @@ function init(){
 function mostrarLogin(){
   document.getElementById('loadingOverlay').classList.add('hidden');
   // Sessão inválida — redireciona para login
-  window.top.location.href = 'login.html'+(LOJA_ID?'?loja='+encodeURIComponent(LOJA_ID):'');
+  window.location.href = 'login.html'+(LOJA_ID?'?loja='+encodeURIComponent(LOJA_ID):'');
 }
 
 function concluirCarregamento(dados){
@@ -3192,14 +3192,6 @@ function salvarCupomForm(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// BOOTSTRAP (chamado pelo Login após autenticação)
-// ═══════════════════════════════════════════════════════════
-function iniciarPainel(usuario){
-  ST.usuario=usuario;
-  sessionStorage.setItem('pdacai_user', JSON.stringify(usuario));
-  carregarDados();
-}
-
 // Inicia ao carregar o HTML
 window.addEventListener('DOMContentLoaded', function(){
   init();

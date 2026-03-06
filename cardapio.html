@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <link rel="icon" type="image/png" href="logo-alyx.png">
   <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="logo-alyx.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Cardápio Online</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1380,7 +1380,17 @@
 
   function renderizarEtapa3() {
     var subtotal = getTotal();
-    var desconto = checkout.cupom ? checkout.cupom.desconto : 0;
+    var desconto = 0;
+    
+    if (checkout.cupom) {
+      if (checkout.cupom.tipo === 'PERCENTUAL') {
+        desconto = Math.round(subtotal * (checkout.cupom.valor / 100) * 100) / 100;
+        checkout.cupom.desconto = desconto; // Atualiza o desconto em tempo real no carrinho
+      } else {
+        desconto = checkout.cupom.desconto;
+      }
+    }
+    
     var taxa     = checkout.tipoEntrega === 'entrega' ? checkout.taxaEntrega : 0;
     var total    = Math.max(0, subtotal - desconto + taxa);
 
