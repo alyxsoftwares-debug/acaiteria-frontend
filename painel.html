@@ -631,7 +631,7 @@ function api(method, path, body) {
 
 // Mapa: nome de função GAS → [endpoint, método HTTP]
 var _FN_MAP = {
-  salvarItemFixo:         [L('/cardapio'),           'POST'],
+  salvarItemFixo:         [L('/itens-fixos'),        'POST'],
   salvarAcaiModelo:       [L('/acai-modelos'),       'POST'],
   salvarAcaiCategoria:    [L('/acai-categorias'),    'POST'],
   salvarAcaiIngrediente:  [L('/acai-ingredientes'),  'POST'],
@@ -639,7 +639,7 @@ var _FN_MAP = {
   salvarCupom:            [L('/cupons'),             'POST'],
   salvarTara:             [L('/taras'),              'POST'],
   salvarUsuario:          [L('/usuarios'),           'POST'],
-  excluirItemFixo:        [L('/cardapio'),          'DELETE'],
+  excluirItemFixo:        [L('/itens-fixos'),       'DELETE'],
   excluirAcaiModelo:      [L('/acai-modelos'),      'DELETE'],
   excluirAcaiCategoria:   [L('/acai-categorias'),   'DELETE'],
   excluirAcaiIngrediente: [L('/acai-ingredientes'), 'DELETE'],
