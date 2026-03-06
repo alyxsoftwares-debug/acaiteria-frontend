@@ -811,24 +811,52 @@ function mostrarLogin(){
   window.top.location.href = 'login.html'+(LOJA_ID?'?loja='+encodeURIComponent(LOJA_ID):'');
 }
 
+function concluirCarregamento(dados){
+  ST.dados=dados;
+  construirUI();
+  loading(false);
+  document.getElementById('app').classList.remove('hidden');
+  iniciarPolling();
+}
+
+function mostrarErroCarregamento(err){
+  document.getElementById('loadingMsg').innerHTML=
+    '<div style="text-align:center">'+
+    '<i class="fa-solid fa-triangle-exclamation" style="font-size:36px;color:#f87171;display:block;margin-bottom:12px"></i>'+
+    '<p style="color:#7f1d1d;font-weight:800;font-size:16px">Erro ao conectar</p>'+
+    '<p style="color:#6b7280;font-size:13px;margin-top:6px">'+(err||'Verifique a conexão')+'</p>'+
+    '<button onclick="carregarDados()" style="margin-top:16px;padding:10px 20px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">Tentar Novamente</button>'+
+    '</div>';
+}
+
 function carregarDados(){
   loading('Carregando dados...');
   api('GET', L('/dados-painel'))
     .then(function(dados){
-      ST.dados=dados;
-      construirUI();
-      loading(false);
-      document.getElementById('app').classList.remove('hidden');
-      iniciarPolling();
+      concluirCarregamento(dados);
     })
     .catch(function(err){
-      document.getElementById('loadingMsg').innerHTML=
-        '<div style="text-align:center">'+
-        '<i class="fa-solid fa-triangle-exclamation" style="font-size:36px;color:#f87171;display:block;margin-bottom:12px"></i>'+
-        '<p style="color:#7f1d1d;font-weight:800;font-size:16px">Erro ao conectar</p>'+
-        '<p style="color:#6b7280;font-size:13px;margin-top:6px">'+(err||'Verifique a conexão')+'</p>'+
-        '<button onclick="carregarDados()" style="margin-top:16px;padding:10px 20px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">Tentar Novamente</button>'+
-        '</div>';
+      // Se for bloqueio de permissão (403), pede apenas o que o cargo permite ver
+      if(err.message && err.message.indexOf('403') > -1) {
+         var fallback = {};
+         var reqs = [
+             api('GET', L('/dados-config')).then(function(d){ fallback.configuracoes = d.configuracoes; }).catch(function(){}),
+             api('GET', L('/delivery-ativo')).then(function(d){ fallback.deliveryAtivo = d; }).catch(function(){})
+         ];
+         // Se for Operador (bloqueado de dados financeiros, mas precisa do PDV)
+         if (ST.usuario && ST.usuario.cargo !== 'Entregador') {
+             reqs.push(api('GET', L('/pedidos/dia')).then(function(d){ fallback.pedidosDia = d; }).catch(function(){}));
+             reqs.push(api('GET', L('/cardapio')).then(function(d){ fallback.itensFixos = d; }).catch(function(){}));
+             reqs.push(api('GET', L('/dados-monte-acai')).then(function(d){
+                 fallback.acaiModelos = d.acaiModelos; fallback.acaiCategorias = d.acaiCategorias; fallback.acaiIngredientes = d.acaiIngredientes;
+             }).catch(function(){}));
+         }
+         Promise.all(reqs).then(function(){
+             concluirCarregamento(fallback);
+         }).catch(function(e2){ mostrarErroCarregamento(e2); });
+      } else {
+         mostrarErroCarregamento(err);
+      }
     });
 }
 
@@ -861,20 +889,26 @@ function tocarSomPedido() {
 function iniciarPolling(){
   if(ST.pollingTimer) clearInterval(ST.pollingTimer);
   ST.pollingTimer=setInterval(function(){
-    // Polling leve: só atualiza pedidosDia e deliveryAtivo
+    
+    // Se for Entregador, busca APENAS o Delivery Ativo para não tomar erro de permissão
+    if(ST.usuario && ST.usuario.cargo === 'Entregador') {
+       api('GET', L('/delivery-ativo')).then(function(res){
+          if(!ST.dados) return;
+          ST.dados.deliveryAtivo = res;
+          var novos=(res||[]).filter(function(p){ return (p.Status||'').toString().toUpperCase()==='NOVO'; }).length;
+          if(ST._qtdDeliveryAnterior>=0 && novos>ST._qtdDeliveryAnterior) tocarSomPedido();
+          ST._qtdDeliveryAnterior=novos;
+          if(ST.abaAtiva==='abaDelivery') renderDelivery();
+       }).catch(function(){});
+       return;
+    }
+
+    // Para outros cargos (Dono, Gerente, Operador) continua normalmente
     api('GET', L('/polling'))
       .then(function(res){
         if(!ST.dados) return;
         ST.dados.pedidosDia    = res.pedidosDia;
         ST.dados.deliveryAtivo = res.deliveryAtivo;
-        // ── Notificação sonora para Entregador ──
-        if(ST.usuario && ST.usuario.cargo==='Entregador'){
-          var novos=(res.deliveryAtivo||[]).filter(function(p){
-            return (p.Status||'').toString().toUpperCase()==='NOVO';
-          }).length;
-          if(ST._qtdDeliveryAnterior>=0 && novos>ST._qtdDeliveryAnterior) tocarSomPedido();
-          ST._qtdDeliveryAnterior=novos;
-        }
         if(ST.abaAtiva==='abaPedidos')  renderPedidosDia();
         if(ST.abaAtiva==='abaDelivery') renderDelivery();
       })
@@ -1357,7 +1391,7 @@ function abrirPDVBalcao(){
       '<select class="form-control mb-3" id="b_itemSelect" onchange="adicionarItemBalcao()">'+itensOpts+'</select>'+
       '<ul class="caixa-itens" id="b_listaItens"></ul>'+
 
-      (modelos.length?
+      (config.Mostrar_AcaiRapido_PDV !== 'NAO' && modelos.length?
         '<h3 style="font-weight:800;font-size:15px;margin:16px 0 10px;color:#1e1b4b"><i class="fa-solid fa-bolt text-purple"></i> Açaí Rápido <span style="font-size:11px;font-weight:500;color:#7c3aed;margin-left:4px">preço fixo</span></h3>'+
         '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px">'+
           modelos.map(function(m){
@@ -2330,7 +2364,7 @@ function renderSecaoItens(){
 }
 
 function renderItensRows(){
-  var items=(ST.dados&&ST.dados.itensFixos)||[];
+  var items=((ST.dados&&ST.dados.itensFixos)||[]).slice().sort(function(a,b){ return (parseInt(a.Ordem)||0) - (parseInt(b.Ordem)||0); });
   if(!items.length) return '<tr><td colspan="6" style="text-align:center;padding:30px;color:#9ca3af">Nenhum item cadastrado</td></tr>';
   return items.map(function(i){
     var disp=i.Disponivel==='SIM';
@@ -2525,7 +2559,7 @@ function renderSecaoMonteAcai(){
 }
 
 function renderModelosRows(){
-  var items=(ST.dados&&ST.dados.acaiModelos)||[];
+  var items=((ST.dados&&ST.dados.acaiModelos)||[]).slice().sort(function(a,b){ return (parseInt(a.Ordem)||0) - (parseInt(b.Ordem)||0); });
   if(!items.length) return '<tr><td colspan="4" style="text-align:center;padding:20px;color:#9ca3af">Nenhum tamanho</td></tr>';
   return items.map(function(m){
     var d=m.Disponivel==='SIM';
@@ -2540,7 +2574,7 @@ function renderModelosRows(){
 }
 
 function renderCatsRows(){
-  var items=(ST.dados&&ST.dados.acaiCategorias)||[];
+  var items=((ST.dados&&ST.dados.acaiCategorias)||[]).slice().sort(function(a,b){ return (parseInt(a.Ordem)||0) - (parseInt(b.Ordem)||0); });
   if(!items.length) return '<tr><td colspan="2" style="text-align:center;padding:20px;color:#9ca3af">Nenhuma categoria</td></tr>';
   return items.map(function(c){
     return '<tr><td style="font-weight:600">'+esc(c.Nome_Categoria)+'</td>'+
@@ -2552,7 +2586,7 @@ function renderCatsRows(){
 }
 
 function renderIngsRows(){
-  var items=(ST.dados&&ST.dados.acaiIngredientes)||[];
+  var items=((ST.dados&&ST.dados.acaiIngredientes)||[]).slice().sort(function(a,b){ return (parseInt(a.Ordem)||0) - (parseInt(b.Ordem)||0); });
   if(!items.length) return '<tr><td colspan="5" style="text-align:center;padding:20px;color:#9ca3af">Nenhum ingrediente</td></tr>';
   var cats=(ST.dados&&ST.dados.acaiCategorias)||[];
   return items.map(function(i){
@@ -2625,7 +2659,7 @@ function abrirFormModelo(id){
   document.getElementById('modalFormTitle').innerHTML='<i class="fa-solid fa-ruler"></i> '+(d?'Editar Tamanho':'Novo Tamanho');
   document.getElementById('modalFormBody').innerHTML=
     '<input type="hidden" id="f_id" value="'+(d?esc(d.ID_Modelo):'')+'"/>'
-    +'<div class="form-row cols-2">'+fGroup('Nome *','f_nome','text',d?d.Nome:'','')+fGroup('Pre\u00e7o Base (R$) *','f_preco','number',d?d.Preco_Base:'','0.00')+'</div>'
+    +'<div class="form-row cols-3">'+fGroup('Nome *','f_nome','text',d?d.Nome:'','')+fGroup('Pre\u00e7o Base (R$) *','f_preco','number',d?d.Preco_Base:'','0.00')+fGroup('Ordem','f_ordem','number',d?d.Ordem||0:'','0')+'</div>'
     +fGroup('Descri\u00e7\u00e3o','f_desc','text',d?d.Descricao:'','Ex: Tamanho m\u00e9dio, ideal para 1 pessoa')
     +'<div class="form-group"><label class="form-label"><i class="fa-solid fa-sliders" style="margin-right:5px;color:#7c3aed"></i>Limites por Categoria</label>'
     +tabelaCats+'</div>'
@@ -2657,6 +2691,7 @@ function salvarModelo(){
     Nome:         nome,
     Descricao:    document.getElementById('f_desc').value.trim(),
     Preco_Base:   parseFloat(document.getElementById('f_preco').value)||0,
+    Ordem:        parseInt(document.getElementById('f_ordem').value)||0,
     Limites_JSON: limitesJSON,
     Foto:         document.getElementById('f_foto').value.trim(),
     Disponivel:   document.getElementById('f_disp').value
@@ -2831,6 +2866,13 @@ function renderConfigLoja(){
     '</div>'+
   '</div>'+
   '<div class="form-group">'+
+    '<label class="form-label"><i class="fa-solid fa-bolt text-purple"></i> Mostrar "Açaí Rápido" no PDV</label>'+
+    '<select class="form-control" id="cfg_acai_rapido">'+
+      '<option value="SIM"'+(c['Mostrar_AcaiRapido_PDV']!=='NAO'?' selected':'')+'>✅ SIM — Exibir atalhos no Balcão</option>'+
+      '<option value="NAO"'+(c['Mostrar_AcaiRapido_PDV']==='NAO'?' selected':'')+'>❌ NÃO — Ocultar no Balcão</option>'+
+    '</select>'+
+  '</div>'+
+  '<div class="form-group">'+
     '<label class="form-label"><i class="fa-solid fa-store"></i> Opção "Retirar na Loja" no Cardápio</label>'+
     '<select class="form-control" id="cfg_retirada">'+
       '<option value="SIM"'+(c['Retirada_Loja_Ativo']!=='NAO'?' selected':'')+'>✅ Ativado — cliente pode escolher retirar na loja</option>'+
@@ -2876,6 +2918,7 @@ function salvarConfiguracoes(){
     'Retirada_Loja_Ativo': document.getElementById('cfg_retirada')  ? document.getElementById('cfg_retirada').value  : 'SIM',
     'AutoImprimir_Balcao': document.getElementById('cfg_print_balcao') ? document.getElementById('cfg_print_balcao').value : 'NAO',
     'AutoImprimir_Delivery': document.getElementById('cfg_print_delivery') ? document.getElementById('cfg_print_delivery').value : 'NAO',
+    'Mostrar_AcaiRapido_PDV': document.getElementById('cfg_acai_rapido') ? document.getElementById('cfg_acai_rapido').value : 'SIM',
     'PIX_Modo':            document.getElementById('cfg_pix_modo')   ? document.getElementById('cfg_pix_modo').value   : 'MANUAL',
     'MP_AccessToken':      document.getElementById('cfg_mp_token')   ? document.getElementById('cfg_mp_token').value   : ''
   };
@@ -3225,27 +3268,59 @@ function imprimirCupom(pedido) {
     var cli = {}; try{ cli = JSON.parse(pedido.Cliente_Info||'{}'); }catch(e){}
     var itens = []; try{ itens = JSON.parse(pedido.Itens_Comprados||'[]'); }catch(e){}
     var dataHora = pedido.Data_Hora || '--';
+    var cfg = ST.dados.configuracoes || {};
     
-    var html = '<html><head><title>Cupom</title><style>body{font-family:monospace;width:300px;margin:0;padding:10px;color:#000;font-size:12px;} .center{text-align:center;} .linha{border-bottom:1px dashed #000;margin:10px 0;} .flex{display:flex;justify-content:space-between;}</style></head><body>';
-    html += '<h2 class="center" style="margin:5px 0;">PEDIDO: #' + (pedido.ID_Venda||'') + '</h2>';
-    html += '<div class="center">' + dataHora + '</div><div class="linha"></div>';
-    if(cli.nome) html += '<b>Cliente:</b> ' + cli.nome + '<br>';
-    if(cli.telefone) html += '<b>Tel:</b> ' + cli.telefone + '<br>';
-    if(cli.endereco) html += '<b>End:</b> ' + cli.endereco + '<br>';
-    html += '<b>Origem:</b> ' + (pedido.Origem||'--') + '<br><div class="linha"></div>';
+    // Captura os dados do seu sistema de forma limpa
+    var logoHTML = cfg.URL_Logo ? '<img src="' + cfg.URL_Logo + '" style="max-width:90px; max-height:90px; border-radius:12px; margin:0 auto 10px; display:block; filter: grayscale(100%);">' : '';
+    var nomeLoja = cfg.Nome_Loja || 'Nossa Loja';
+    var telHTML = cfg.WhatsApp_Numero ? '<div style="margin-top:2px;">📱 ' + cfg.WhatsApp_Numero + '</div>' : '';
+    var endHTML = cfg.Endereco_Loja ? '<div style="margin-top:4px;">📍 ' + cfg.Endereco_Loja + '</div>' : '';
+    var insta = cfg.Instagram_URL ? cfg.Instagram_URL.replace(/\/$/, '').split('/').pop() : '';
+    var instaHTML = insta ? '<div style="margin-top:4px;">📸 @' + insta + '</div>' : '';
+
+    // Estilo preparado para Bobina Térmica
+    var html = '<html><head><title>Cupom</title><style>body{font-family:"Courier New", Courier, monospace;width:300px;margin:0 auto;padding:15px 10px;color:#000;font-size:13px;line-height:1.4;} .center{text-align:center;} .linha{border-bottom:1px dashed #000;margin:12px 0;} .flex{display:flex;justify-content:space-between;align-items:flex-end;} .bold{font-weight:bold;} .badge{border: 1px solid #000; padding:2px 6px; border-radius:4px; font-size:11px;} @media print { body { width: 100%; margin: 0; padding: 0; } }</style></head><body>';
     
+    // --- Cabeçalho da Loja ---
+    html += '<div class="center">' + logoHTML + '<h2 style="margin:0 0 5px;font-size:18px;">' + nomeLoja + '</h2>' + telHTML + endHTML + instaHTML + '</div>';
+    html += '<div class="linha"></div>';
+    
+    // --- Dados do Pedido ---
+    html += '<h2 class="center" style="margin:5px 0;font-size:22px;">PEDIDO: #' + (pedido.ID_Venda||'') + '</h2>';
+    html += '<div class="center" style="font-size:11px;margin-bottom:12px;">' + dataHora + '</div>';
+    
+    html += '<div>';
+    if(cli.nome) html += '<div class="bold">👤 ' + cli.nome + '</div>';
+    if(cli.telefone) html += '<div>📞 ' + cli.telefone + '</div>';
+    if(cli.endereco) html += '<div style="margin-top:4px;">🚚 ' + cli.endereco + '</div>';
+    html += '<div style="margin-top:6px;">📍 Origem: <span class="badge">' + (pedido.Origem||'--') + '</span></div>';
+    html += '</div><div class="linha"></div>';
+    
+    // --- Lista de Itens ---
+    html += '<div class="bold" style="margin-bottom:8px; font-size:14px;">RESUMO DO PEDIDO:</div>';
     itens.forEach(function(i) {
-        html += '<div class="flex" style="font-weight:bold;"><span>' + (i.descricao||i.nome||'') + '</span><span>' + fmtMoeda(i.preco) + '</span></div>';
-        if(i.detalhes) html += '<div style="font-size:11px;margin-bottom:6px;color:#333;">' + i.detalhes + '</div>';
+        html += '<div class="flex bold" style="margin-top:6px;"><span>• ' + (i.descricao||i.nome||'') + '</span><span>' + fmtMoeda(i.preco) + '</span></div>';
+        if(i.detalhes) html += '<div style="font-size:11px;color:#333;margin-left:12px;margin-bottom:2px;">↳ ' + i.detalhes + '</div>';
     });
     
     html += '<div class="linha"></div>';
+    
+    // --- Fechamento de Valores ---
     if(parseFloat(pedido.Subtotal||0) > 0) html += '<div class="flex"><span>Subtotal:</span><span>' + fmtMoeda(pedido.Subtotal) + '</span></div>';
     if(parseFloat(pedido.Desconto||0) > 0) html += '<div class="flex"><span>Desconto:</span><span>-' + fmtMoeda(pedido.Desconto) + '</span></div>';
     if(parseFloat(pedido.Taxa_Entrega||0) > 0) html += '<div class="flex"><span>Taxa Entrega:</span><span>' + fmtMoeda(pedido.Taxa_Entrega) + '</span></div>';
-    html += '<div class="flex" style="font-weight:bold;font-size:15px;margin-top:6px;"><span>TOTAL:</span><span>' + fmtMoeda(pedido.Total_Final) + '</span></div>';
-    html += '<div class="linha"></div><div class="center" style="font-weight:bold;">Forma de Pagamento:<br>' + (pedido.Metodo_Pagamento||'--') + '</div>';
-    html += '<div class="center" style="margin-top:20px;">*** OBRIGADO PELA PREFERENCIA ***</div>';
+    
+    html += '<div class="linha"></div>';
+    html += '<div class="flex bold" style="font-size:17px; background:#000; color:#fff; padding: 4px;"><span>TOTAL:</span><span>' + fmtMoeda(pedido.Total_Final) + '</span></div>';
+    
+    // --- Pagamento ---
+    html += '<div class="linha"></div>';
+    html += '<div class="center">Forma de Pagamento:<br><span class="bold" style="font-size:15px; text-transform:uppercase;">' + (pedido.Metodo_Pagamento||'--') + '</span></div>';
+    
+    // --- Rodapé ---
+    html += '<div class="linha"></div>';
+    html += '<div class="center" style="font-size:11px;margin-top:15px;">Desenvolvido por <b>AlyxSoftwares</b><br>Obrigado pela preferência! ❤️</div>';
+    
     html += '</body></html>';
     
     janela.document.write(html);
