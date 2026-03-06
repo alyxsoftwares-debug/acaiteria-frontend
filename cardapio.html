@@ -638,7 +638,7 @@
         loading.style.transition = 'opacity 0.3s';
         setTimeout(function () {
           loading.style.display = 'none';
-          var temMonteAcai = dadosBase.tamanhos.length > 0 && dadosBase.ingredientes.length > 0;
+          var temMonteAcai = dadosBase.tamanhos.length > 0 || dadosBase.ingredientes.length > 0;
           var temConteudo  = temMonteAcai || dadosBase.prontos.length > 0;
           if (!temConteudo) {
             document.getElementById('estadoVazio').classList.remove('hidden');
@@ -722,7 +722,7 @@
   // ══════════════════════════════════════════════════════════
   function renderizarProntos() {
     var lista = document.getElementById('listaProdutosReal');
-    lista.innerHTML = dadosBase.prontos.map(function (item) {
+    lista.innerHTML = dadosBase.prontos.filter(function(item){ return item.ID_Item; }).map(function (item) {
       var foto = (item.Foto && item.Foto !== '')
         ? '<img src="' + esc(item.Foto) + '" loading="lazy" ' +
           'class="w-24 h-24 object-cover rounded-2xl shadow flex-shrink-0 border border-gray-100" ' +

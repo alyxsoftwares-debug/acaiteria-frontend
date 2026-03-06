@@ -1352,8 +1352,8 @@ function abrirPDVBalcao(){
         '<div style="font-size:28px;font-weight:900;color:#1e1b4b" id="b_pesoLiqVal">0 g</div>'+
         '<div style="font-size:13px;color:#7c3aed;font-weight:700" id="b_valorAcaiVal">R$ 0,00</div>'+
       '</div>'+
-      '<button type="button" class="btn btn-primary btn-full mb-3" onclick="adicionarAcaiBalcao()" style="background:linear-gradient(135deg,#059669,#047857)">'+
-        '<i class="fa-solid fa-plus"></i> Adicionar Açaí ao Carrinho'+
+      '<button type="button" class="btn btn-primary btn-full mb-3" onclick="adicionarAcaiBalcao()" id="b_btnAdicionarAcai" style="background:linear-gradient(135deg,#059669,#047857)">'+
+        '<i class="fa-solid fa-plus"></i> Adicionar Açaí ao Carrinho <kbd style="font-size:9px;opacity:.65;background:rgba(255,255,255,.25);border-radius:4px;padding:1px 4px;margin-left:4px">F6</kbd>'+
       '</button>'+
 
       '<div id="b_listaAcaiWrap" style="display:none;margin-bottom:12px">'+
@@ -1418,7 +1418,9 @@ function abrirPDVBalcao(){
         '<div class="caixa-total-row big"><span>Total</span><span id="b_r_total">R$ 0,00</span></div>'+
       '</div>'+
       '<div id="b_trocoDisplay" class="caixa-troco hidden">Troco: <span id="b_trocoVal">R$ 0,00</span></div>'+
-      '<button class="btn btn-primary btn-full mt-4" onclick="finalizarBalcao()" id="b_btnFinalizar">'+
+      '<button class="btn btn-full mt-3" onclick="adicionarAcaiBalcao()" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;font-weight:800;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s" onmouseover="this.style.opacity=\'.88\'" onmouseout="this.style.opacity=\'1\'">'+
+      '<i class="fa-solid fa-ice-cream"></i>Adicionar Açaí ao Carrinho <kbd style="font-size:9px;opacity:.65;background:rgba(255,255,255,.25);border-radius:4px;padding:1px 4px;margin-left:4px">F6</kbd></button>'+
+      '<button class="btn btn-primary btn-full mt-3" onclick="finalizarBalcao()" id="b_btnFinalizar">'+
       '<i class="fa-solid fa-check-circle"></i>Finalizar Venda no Balcão <kbd style="font-size:9px;opacity:.65;background:rgba(255,255,255,.25);border-radius:4px;padding:1px 4px;margin-left:4px">F4</kbd></button>'+
       '<div id="b_finMsg" class="mt-3"></div>'+
     '</div>'+
@@ -3103,11 +3105,17 @@ window.addEventListener('DOMContentLoaded', function(){
 });
 
 // ── Atalhos de teclado ──────────────────────────────────────
-// F2 = Abrir Balcão  |  F3 = Abrir Delivery  |  Esc = Fechar modal
+// F2 = Abrir Balcão  |  F3 = Abrir Delivery  |  F6 = Adicionar Açaí (modal Balcão)  |  Esc = Fechar modal
 document.addEventListener('keydown', function(e){
   var tag=(document.activeElement&&document.activeElement.tagName)||'';
 
   // F4 e F5 funcionam mesmo com campo focado (finalizar venda)
+  if(e.key==='F6'){
+    e.preventDefault();
+    var mBalcaoF6=document.getElementById('modalBalcao');
+    if(mBalcaoF6&&mBalcaoF6.classList.contains('open')) adicionarAcaiBalcao();
+    return;
+  }
   if(e.key==='F4'){
     e.preventDefault();
     var mBalcao=document.getElementById('modalBalcao');
