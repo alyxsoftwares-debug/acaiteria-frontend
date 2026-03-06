@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <link rel="icon" href="https://seu-link-da-logo-alyxsoftwares.png">
+  <link rel="icon" type="image/png" href="logo-alyx.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Acesso Restrito — AlyxSoftwares</title>
@@ -101,6 +101,23 @@
 
     <!-- Campos de login -->
     <div class="space-y-5">
+
+      <!-- Loja (Oculto por padrão, aparece se o link estiver limpo) -->
+      <div id="divCodigoLoja" style="display: none;">
+        <label for="inputCodigoLoja" class="block text-xs font-black text-gray-500 uppercase tracking-wide mb-2 pl-1 no-select">
+          Código da Loja
+        </label>
+        <div class="relative group">
+          <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none" aria-hidden="true">
+            <i class="fa-solid fa-store text-gray-400 group-focus-within:text-purple-500 transition-colors"></i>
+          </span>
+          <input id="inputCodigoLoja" type="text" placeholder="Ex: alyxsoftwares"
+                 class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl
+                        font-medium text-gray-800 lowercase focus:outline-none focus:ring-2
+                        focus:ring-purple-500 focus:bg-white transition-all shadow-inner"
+                 onkeydown="if(event.key==='Enter') document.getElementById('inputUsuario').focus()">
+        </div>
+      </div>
 
       <!-- Usuário -->
       <div>
@@ -236,12 +253,11 @@ if (lojaId) carregarFaviconDinamico(lojaId);
   // INICIALIZAÇÃO
   // ══════════════════════════════════════════════════════════
   window.addEventListener('DOMContentLoaded', function () {
-    // Se não há loja_id na URL, exibe erro e trava o formulário
+    // Se não há loja_id na URL, exibe o campo para digitar e esconde o erro
     if (!LOJA_ID) {
-      document.getElementById('alertaLojaInvalida').classList.remove('hidden');
-      document.getElementById('btnEntrar').disabled = true;
-      document.getElementById('inputUsuario').disabled = true;
-      document.getElementById('inputSenha').disabled = true;
+      document.getElementById('alertaLojaInvalida').classList.add('hidden');
+      document.getElementById('divCodigoLoja').style.display = 'block';
+      document.getElementById('inputCodigoLoja').focus();
       return;
     }
 
@@ -422,6 +438,16 @@ if (lojaId) carregarFaviconDinamico(lojaId);
       return;
     }
 
+    // Se LOJA_ID estiver vazio, tenta pegar do campo novo
+    if (!LOJA_ID) {
+      LOJA_ID = (document.getElementById('inputCodigoLoja').value || '').trim().toLowerCase();
+      if (!LOJA_ID) {
+        exibirAlerta('Informe o código da loja para continuar.', 'erro');
+        document.getElementById('inputCodigoLoja').focus();
+        return;
+      }
+    }
+
     var usuario = (document.getElementById('inputUsuario').value || '').trim().toLowerCase();
     var senha   = document.getElementById('inputSenha').value || '';
 
@@ -489,9 +515,9 @@ if (lojaId) carregarFaviconDinamico(lojaId);
       console.warn('[Login] Erro ao salvar sessão:', e);
     }
 
-    // Feedback visual imediato, redirecionamento sem delay desnecessário
+   // Feedback visual imediato, redirecionamento sem delay desnecessário
     setEstadoBotao(ESTADO_SUCESSO);
-    window.location.href = 'painel.html';
+    window.location.href = 'painel.html?loja=' + LOJA_ID;
   }
 
   function onLoginErro(erro) {
