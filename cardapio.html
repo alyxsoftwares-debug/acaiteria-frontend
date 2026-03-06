@@ -534,7 +534,15 @@
   // 1. INICIALIZAÇÃO
   // ══════════════════════════════════════════════════════════
   // ═══ CONFIGURAÇÃO DA API ════════════════════════════════
-  var API_URL = 'https://acaiteria-backend-z7n0.onrender.com';
+  var API_URL = 'https://alyxsoftwares-acaiteria.onrender.com'; // ← URL do seu backend no Render
+
+  // ─── ID da loja lido da URL: cardapio.html?loja=minha-loja ─────────────────
+  var LOJA_ID = (function(){
+    try{ return new URLSearchParams(window.location.search).get('loja') || ''; }catch(e){ return ''; }
+  })();
+
+  /** Monta o path multitenant */
+  function L(path){ return '/api/lojas/'+LOJA_ID+path; }
 
   /**
    * Wrapper fetch com timeout de 25s — acessível em todo o script
@@ -556,6 +564,16 @@
   // ═══════════════════════════════════════════════════════════
 
   window.onload = function () {
+  // Se não há loja_id na URL, exibe erro imediato
+  if (!LOJA_ID) {
+    document.getElementById('loadingCardapio').innerHTML =
+      '<div class="bg-white rounded-3xl border-2 border-red-100 p-10 text-center shadow-sm">' +
+      '<div class="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">' +
+      '<i class="fa-solid fa-triangle-exclamation text-2xl text-red-400"></i></div>' +
+      '<p class="text-red-600 font-black text-base">Link inválido</p>' +
+      '<p class="text-red-400 text-sm mt-1 font-medium">Acesse o cardápio pelo link fornecido pela sua loja.</p></div>';
+    return;
+  }
 
   var _loadTimeout = setTimeout(function () {
     var ldr = document.getElementById('loadingCardapio');
@@ -564,7 +582,7 @@
     }
   }, 25000);
 
-  api('GET', '/api/cardapio')
+  api('GET', L('/cardapio'))
     .then(function (p) {
       clearTimeout(_loadTimeout);
       if (!p) { mostrarErroCardapio('Dados inválidos recebidos do servidor.'); return; }
@@ -1298,7 +1316,7 @@
     msgEl.innerText  = '⏳ Validando...';
     msgEl.className  = 'text-xs font-bold mt-2 text-gray-500';
     msgEl.classList.remove('hidden');
-    api('GET', '/api/cupons/validar?codigo=' + encodeURIComponent(codigo))
+    api('GET', L('/cupons/validar?codigo=') + encodeURIComponent(codigo))
       .then(function (res) {
         if (res.valido) {
           // Verifica se o cupom é permitido no cardápio online
@@ -1483,7 +1501,7 @@
       troco:     trocoFinal
     };
 
-    api('POST', '/api/pedidos/online-pix', dadosPedido)
+    api('POST', L('/pedidos/online'), dadosPedido)
     .then(function(res) {
       var idVenda = (res && res.sucesso && res.id) ? res.id : 'LOCAL';
       abrirWhatsApp(dadosPedido, idVenda);
@@ -1634,7 +1652,7 @@
     res.innerHTML = '<div class="flex justify-center py-8">' +
       '<div class="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div></div>';
 
-    api('GET', '/api/pedidos/acompanhamento?q=' + encodeURIComponent(q))
+    api('GET', L('/pedidos/acompanhamento?q=') + encodeURIComponent(q))
       .then(function(data){
         renderRastreio(data);
         // Auto-atualiza a cada 30s enquanto o pedido não estiver finalizado
@@ -1642,7 +1660,7 @@
           _rastreioTimer=setInterval(function(){
             var modal=document.getElementById('modalRastreio');
             if(!modal||modal.classList.contains('hidden')){ clearInterval(_rastreioTimer); _rastreioTimer=null; return; }
-            api('GET', '/api/pedidos/acompanhamento?q=' + encodeURIComponent(_rastreioQuery))
+            api('GET', L('/pedidos/acompanhamento?q=') + encodeURIComponent(_rastreioQuery))
               .then(function(d){
                 renderRastreio(d);
                 if(d && !d.erro && _STATUS_FINAIS.indexOf(d.Status||'')>=0){

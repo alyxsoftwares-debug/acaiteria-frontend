@@ -584,7 +584,15 @@ table.tbl tr:last-child td{border-bottom:none}
 <script>
 // ═══ CONFIGURAÇÃO DA API ════════════════════════════════════════════════════
 // Altere API_URL para a URL real do seu backend no Render após o deploy.
-var API_URL = 'https://acaiteria-backend-z7n0.onrender.com';
+var API_URL = 'https://alyxsoftwares-acaiteria.onrender.com'; // ← URL do seu backend no Render
+
+// ─── ID da loja lido da sessão (salvo pelo login.html) ─────────────────────
+var LOJA_ID = (function(){
+  try{ var s=JSON.parse(sessionStorage.getItem('pdacai_user')||'{}'); return s.loja_id||''; }catch(e){ return ''; }
+})();
+
+/** Monta o path multitenant: L('/pedidos') → '/api/lojas/{loja_id}/pedidos' */
+function L(path){ return '/api/lojas/'+LOJA_ID+path; }
 
 /**
  * Wrapper fetch — substitui google.script.run em toda a aplicação.
@@ -611,7 +619,7 @@ function api(method, path, body) {
       clearTimeout(tid);
       if (r.status === 401) {
         sessionStorage.clear();
-        window.location.href = 'login.html';
+        window.location.href = 'login.html'+(LOJA_ID?'?loja='+encodeURIComponent(LOJA_ID):'');
         throw new Error('Sess\u00e3o expirada');
       }
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -622,31 +630,31 @@ function api(method, path, body) {
 
 // Mapa: nome de função GAS → [endpoint, método HTTP]
 var _FN_MAP = {
-  salvarItemFixo:         ['/api/itens-fixos',        'POST'],
-  salvarAcaiModelo:       ['/api/acai-modelos',        'POST'],
-  salvarAcaiCategoria:    ['/api/acai-categorias',     'POST'],
-  salvarAcaiIngrediente:  ['/api/acai-ingredientes',   'POST'],
-  salvarBairro:           ['/api/bairros',             'POST'],
-  salvarCupom:            ['/api/cupons',              'POST'],
-  salvarTara:             ['/api/taras',               'POST'],
-  salvarUsuario:          ['/api/usuarios',            'POST'],
-  excluirItemFixo:        ['/api/itens-fixos',         'DELETE'],
-  excluirAcaiModelo:      ['/api/acai-modelos',        'DELETE'],
-  excluirAcaiCategoria:   ['/api/acai-categorias',     'DELETE'],
-  excluirAcaiIngrediente: ['/api/acai-ingredientes',   'DELETE'],
-  excluirBairro:          ['/api/bairros',             'DELETE'],
-  excluirCupom:           ['/api/cupons',              'DELETE'],
-  excluirTara:            ['/api/taras',               'DELETE'],
-  excluirUsuario:         ['/api/usuarios',            'DELETE']
+  salvarItemFixo:         [L('/cardapio'),           'POST'],
+  salvarAcaiModelo:       [L('/acai-modelos'),       'POST'],
+  salvarAcaiCategoria:    [L('/acai-categorias'),    'POST'],
+  salvarAcaiIngrediente:  [L('/acai-ingredientes'),  'POST'],
+  salvarBairro:           [L('/bairros'),            'POST'],
+  salvarCupom:            [L('/cupons'),             'POST'],
+  salvarTara:             [L('/taras'),              'POST'],
+  salvarUsuario:          [L('/usuarios'),           'POST'],
+  excluirItemFixo:        [L('/cardapio'),          'DELETE'],
+  excluirAcaiModelo:      [L('/acai-modelos'),      'DELETE'],
+  excluirAcaiCategoria:   [L('/acai-categorias'),   'DELETE'],
+  excluirAcaiIngrediente: [L('/acai-ingredientes'), 'DELETE'],
+  excluirBairro:          [L('/bairros'),           'DELETE'],
+  excluirCupom:           [L('/cupons'),            'DELETE'],
+  excluirTara:            [L('/taras'),             'DELETE'],
+  excluirUsuario:         [L('/usuarios'),          'DELETE']
 };
 
 // Mapa: cacheKey → endpoint GET para recarregar lista
 var _CACHE_ENDPOINT = {
-  itensFixos: '/api/itens-fixos',
-  bairros:    '/api/bairros',
-  cupons:     '/api/cupons',
-  taras:      '/api/taras',
-  usuarios:   '/api/usuarios'
+  itensFixos: '/cardapio',
+  bairros:    '/bairros',
+  cupons:     '/cupons',
+  taras:      '/taras',
+  usuarios:   '/usuarios'
 };
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -655,7 +663,7 @@ var _CACHE_ENDPOINT = {
 // ESTADO GLOBAL
 // ═══════════════════════════════════════════════════════════
 var ST = {
-  usuario: null,           // { nome, nivel, permissoes }
+  usuario: null,           // { nome, cargo, permissoes }
   dados:   null,           // getDadosPainelGeral()
   abaAtiva: '',
   cancelTarget: '',        // ID do pedido aguardando cancelamento
@@ -765,20 +773,30 @@ function logout(){
   ST.usuario=null;
   ST.dados=null;
   sessionStorage.removeItem('pdacai_user');
-  sessionStorage.removeItem('sessao_nome');
-  sessionStorage.removeItem('sessao_cargo');
+  
   // Na nova arquitetura redireciona direto para a página de login
-  window.top.location.href = 'index.html';
+  window.top.location.href = 'login.html'+(LOJA_ID?'?loja='+encodeURIComponent(LOJA_ID):'');
 }
 
 // ═══════════════════════════════════════════════════════════
 // INIT / LOGIN
 // ═══════════════════════════════════════════════════════════
 function init(){
+  if(!LOJA_ID){
+    // Sessão sem loja_id — volta para raiz
+    window.top.location.href = 'login.html';
+    return;
+  }
   var saved=sessionStorage.getItem('pdacai_user');
   if(saved){
     try{
       ST.usuario=JSON.parse(saved);
+      if(!ST.usuario.loja_id){
+        // Sessão antiga sem loja_id — força novo login
+        sessionStorage.clear();
+        window.top.location.href = 'login.html?loja='+encodeURIComponent(LOJA_ID);
+        return;
+      }
       carregarDados();
       return;
     }catch(e){}
@@ -789,12 +807,12 @@ function init(){
 function mostrarLogin(){
   document.getElementById('loadingOverlay').classList.add('hidden');
   // Sessão inválida — redireciona para login
-  window.top.location.href = 'index.html';
+  window.top.location.href = 'login.html'+(LOJA_ID?'?loja='+encodeURIComponent(LOJA_ID):'');
 }
 
 function carregarDados(){
   loading('Carregando dados...');
-  api('GET', '/api/dados-painel')
+  api('GET', L('/dados-painel'))
     .then(function(dados){
       ST.dados=dados;
       construirUI();
@@ -833,13 +851,13 @@ function iniciarPolling(){
   if(ST.pollingTimer) clearInterval(ST.pollingTimer);
   ST.pollingTimer=setInterval(function(){
     // Polling leve: só atualiza pedidosDia e deliveryAtivo
-    api('GET', '/api/polling')
+    api('GET', L('/polling'))
       .then(function(res){
         if(!ST.dados) return;
         ST.dados.pedidosDia    = res.pedidosDia;
         ST.dados.deliveryAtivo = res.deliveryAtivo;
         // ── Notificação sonora para Entregador ──
-        if(ST.usuario && ST.usuario.nivel==='Entregador'){
+        if(ST.usuario && ST.usuario.cargo==='Entregador'){
           var novos=(res.deliveryAtivo||[]).filter(function(p){
             return (p.Status||'').toString().toUpperCase()==='NOVO';
           }).length;
@@ -864,7 +882,7 @@ function construirUI(){
   document.title=nomeLoja+' — Painel';
 
   document.getElementById('sidebarNome').textContent=u.nome||'Usuário';
-  document.getElementById('sidebarCargo').textContent=u.nivel||'';
+  document.getElementById('sidebarCargo').textContent=u.cargo||'';
   var avatarEl=document.getElementById('sidebarAvatar');
   if(u.fotoPerfil){
     avatarEl.textContent='';
@@ -918,7 +936,7 @@ function construirUI(){
   // Adicione ao final de construirUI(), verificando o cargo:
   // ── Bloqueia DevTools para cargos que não são Dono ──────────────────────
   (function() {
-    if (u.nivel === 'Dono') return;
+    if (u.cargo === 'Dono') return;
     document.addEventListener('keydown', function(ev) {
       var isF12       = ev.key === 'F12';
       var isCtrlShift = ev.ctrlKey && ev.shiftKey && ['I','J','C'].includes(ev.key.toUpperCase());
@@ -933,7 +951,7 @@ function construirUI(){
     });
   })();
 
-  if(u.nivel==='Entregador'){
+  if(u.cargo==='Entregador'){
   toast('🔔 Clique em qualquer lugar para ativar notificações sonoras','');
 }
 }
@@ -971,7 +989,7 @@ function refreshAbaAtual(){
 
 function recarregarConfig(){
   toast('Recarregando configurações...','');
-  api('GET', '/api/dados-config')
+  api('GET', L('/dados-config'))
     .then(function(dados){
       if(!ST.dados) ST.dados={};
       ST.dados.configuracoes = dados.configuracoes || {};
@@ -988,7 +1006,7 @@ function recarregarConfig(){
 
 // Recarrega Monte Açaí (modelos, categorias, ingredientes) do servidor
 function recarregarMonteAcai(){
-  api('GET', '/api/dados-monte-acai')
+  api('GET', L('/dados-monte-acai'))
     .then(function(dados){
       if(!ST.dados) ST.dados={};
       ST.dados.acaiModelos      = dados.acaiModelos      || [];
@@ -1001,7 +1019,7 @@ function recarregarMonteAcai(){
 
 // Recarrega Itens Fixos do servidor
 function recarregarItens(){
-  api('GET', '/api/itens-fixos')
+  api('GET', L('/cardapio'))
     .then(function(novos){
       if(!ST.dados) ST.dados={};
       ST.dados.itensFixos = novos || [];
@@ -1158,7 +1176,7 @@ function buscarPedidosUI(){
   div.innerHTML='<div class="flex items-center gap-2 text-muted text-sm"><div class="spinner" style="width:20px;height:20px;border-width:2px"></div>Aguardando...</div>';
   ST._buscaTimer=setTimeout(function(){
     div.innerHTML='<div class="flex items-center gap-2 text-muted text-sm"><div class="spinner" style="width:20px;height:20px;border-width:2px"></div>Buscando...</div>';
-    api('GET', '/api/pedidos/buscar?q=' + encodeURIComponent(q))
+    api('GET', L('/pedidos/buscar?q=') + encodeURIComponent(q))
       .then(function(res){
         if(!res||res.length===0){ div.innerHTML='<p class="text-sm text-muted">Nenhum resultado encontrado.</p>'; return; }
         div.innerHTML='<p class="text-xs text-muted mb-2">'+res.length+' resultado(s)</p>'+res.map(renderPedidoCard).join('');
@@ -1184,13 +1202,13 @@ function confirmarCancelamento(){
   var btn=document.getElementById('btnConfirmarCancel');
   if(!login||!senha){ msgEl.innerHTML='<p class="text-sm text-red"><i class="fa-solid fa-circle-exclamation"></i> Preencha login e senha.</p>'; return; }
   btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Verificando...';
-  api('POST', '/api/pedidos/' + ST.cancelTarget + '/cancelar', { login: login, senha: senha })
+  api('POST', L('/pedidos/') + ST.cancelTarget + '/cancelar', { login: login, senha: senha })
     .then(function(res){
       btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-ban"></i>Cancelar Pedido';
       if(res.sucesso){
         fecharModal('modalAuthCancel');
         toast(res.mensagem,'success');
-        setTimeout(function(){ navegarPara('abaPedidos'); }, 1000);
+        navegarPara('abaPedidos');
       } else {
         msgEl.innerHTML='<p class="text-sm text-red"><i class="fa-solid fa-circle-xmark"></i> '+esc(res.mensagem)+'</p>';
       }
@@ -1579,7 +1597,7 @@ function finalizarBalcao(){
     telefone:   document.getElementById('b_telefone').value.trim()
   };
 
-  api('POST', '/api/pedidos/balcao', dados)
+  api('POST', L('/pedidos/balcao'), dados)
     .then(function(res){
       ST.registrando=false;
       btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check-circle"></i>Finalizar Venda no Balcão';
@@ -1791,7 +1809,7 @@ function finalizarDeliveryPDV(){
     valorPago:  parseFloat((document.getElementById('d_valorPago')||{}).value||0)
   };
 
-  api('POST', '/api/pedidos/delivery', dados)
+  api('POST', L('/pedidos/delivery'), dados)
     .then(function(res){
       ST.registrando=false;
       btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-motorcycle"></i>Registrar Pedido Delivery';
@@ -1842,7 +1860,7 @@ function aplicarCupom(inputId,hiddenId,msgId,callback){
   var msgEl=document.getElementById(msgId);
   if(!codigo){ msgEl.innerHTML='<span class="text-red">Digite um código.</span>'; return; }
   msgEl.innerHTML='<span class="text-muted">Verificando...</span>';
-  api('GET', '/api/cupons/validar?codigo=' + encodeURIComponent(codigo))
+  api('GET', L('/cupons/validar?codigo=') + encodeURIComponent(codigo))
     .then(function(res){
       if(res.valido){
         // Armazena cupom ativo para uso no calcBalcao/calcDelivery
@@ -1864,7 +1882,7 @@ function aplicarCupom(inputId,hiddenId,msgId,callback){
 <script>
 // Recarrega apenas os pedidos do dia (mais leve que getDadosPainelGeral completo)
 function recarregarPedidosDia(){
-  api('GET', '/api/pedidos/dia')
+  api('GET', L('/pedidos/dia'))
     .then(function(res){
       if(ST.dados) ST.dados.pedidosDia=res;
       renderPedidosDia();
@@ -1890,7 +1908,7 @@ function renderSecaoDelivery(){
 function recarregarDelivery(){
   var lista=document.getElementById('listaDelivery');
   if(lista) lista.innerHTML='<div style="text-align:center;padding:30px"><div class="spinner" style="margin:auto"></div></div>';
-  api('GET', '/api/delivery-ativo')
+  api('GET', L('/delivery-ativo'))
     .then(function(res){
       if(ST.dados) ST.dados.deliveryAtivo=res;
       renderDelivery();
@@ -1975,7 +1993,7 @@ function renderDeliveryCard(p){
 }
 
 function pegarDelivery(idVenda){
-  api('POST', '/api/pedidos/' + idVenda + '/pegar-delivery', { nomeEntregador: ST.usuario.nome })
+  api('POST', L('/pedidos/') + idVenda + '/pegar-delivery', { nomeEntregador: ST.usuario.nome })
     .then(function(res){
       if(res.sucesso){
         toast('Pedido atribuído a você!','success');
@@ -2042,7 +2060,7 @@ function statusBtn(val,atual,icon,label,idVenda){
 }
 
 function mudarStatusDelivery(idVenda,novoStatus){
-  api('PATCH', '/api/pedidos/' + idVenda + '/status-entrega', { status: novoStatus })
+  api('PATCH', L('/pedidos/') + idVenda + '/status', { status: novoStatus })
     .then(function(res){
       if(res.sucesso){
         toast('Status atualizado!','success');
@@ -2160,7 +2178,7 @@ function carregarRelatorio(){
   if(tbody) tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:30px"><div class="spinner" style="margin:auto"></div></td></tr>';
 
   var _qRel = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]||''); }).join('&');
-  api('GET', '/api/pedidos/relatorio?' + _qRel)
+  api('GET', L('/pedidos/relatorio?') + _qRel)
     .then(renderRelatorio)
     .catch(function(e){
       if(tbody) tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#ef4444">Erro: '+esc(e)+'</td></tr>';
@@ -2347,7 +2365,7 @@ function chamarSalvar(fn,dados,tbodyId,renderFn,modalId,cacheKey){
 function recarregarDadosEAtualizar(tbodyId,renderFn,cacheKey){
   var endpoint = _CACHE_ENDPOINT[cacheKey];
   if(!endpoint){ return; }
-  api('GET', endpoint)
+  api('GET', L(endpoint))
     .then(function(novos){
       if(ST.dados&&cacheKey) ST.dados[cacheKey]=novos;
       var tbody=document.getElementById(tbodyId);
@@ -2373,7 +2391,7 @@ function confirmarExcluir(aba,id,nome,fn){
     document.body.removeChild(overlay);
     var mapDel = _FN_MAP[fn];
     if(!mapDel){ toast('Função não mapeada: '+fn,'error'); return; }
-    api('DELETE', mapDel[0] + '/' + encodeURIComponent(id))
+    api('DELETE', L(mapDel[0]) + '/' + encodeURIComponent(id))
       .then(function(res){
         if(res.sucesso){
           toast('Excluído com sucesso!','success');
@@ -2580,7 +2598,7 @@ function salvarModelo(){
   };
   var btn=document.querySelector('#modalFormCrud .btn-primary');
   if(btn){ btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px"></div>Salvando...'; }
-  api('POST','/api/acai-modelos',d)
+  api('POST', L('/acai-modelos'), d)
     .then(function(res){
       if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); recarregarMonteAcai(); }
       else{ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-check"></i>Salvar';} }
@@ -2599,7 +2617,7 @@ function abrirFormCategoria(id){
 function salvarCategoria(){
   var d={ID_Categoria:document.getElementById('f_id').value,Nome_Categoria:document.getElementById('f_nome').value.trim()};
   if(!d.Nome_Categoria){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Nome obrigatório.</p>'; return; }
-  api('POST','/api/acai-categorias',d).then(function(res){ if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); recarregarMonteAcai(); } else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; }).catch(function(e){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; });
+  api('POST', L('/acai-categorias'), d).then(function(res){ if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); recarregarMonteAcai(); } else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; }).catch(function(e){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; });
 }
 
 function abrirFormIngrediente(id){
@@ -2622,7 +2640,7 @@ function abrirFormIngrediente(id){
 function salvarIngrediente(){
   var d={ID_Ingrediente:document.getElementById('f_id').value,ID_Categoria:document.getElementById('f_cat').value,Nome:document.getElementById('f_nome').value.trim(),Descricao:document.getElementById('f_desc').value.trim(),Preco:parseFloat(document.getElementById('f_preco').value)||0,Foto:document.getElementById('f_foto').value.trim(),Disponivel:document.getElementById('f_disp').value};
   if(!d.Nome){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Nome obrigatório.</p>'; return; }
-  api('POST','/api/acai-ingredientes',d).then(function(res){ if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); recarregarMonteAcai(); } else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; }).catch(function(e){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; });
+  api('POST', L('/acai-ingredientes'), d).then(function(res){ if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); recarregarMonteAcai(); } else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; }).catch(function(e){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2774,7 +2792,7 @@ function salvarConfiguracoes(){
   };
   var msg=document.getElementById('cfgMsg');
   msg.innerHTML='<div class="flex items-center gap-2 text-muted text-sm"><div class="spinner" style="width:18px;height:18px;border-width:2px"></div>Salvando...</div>';
-  api('POST', '/api/configuracoes', dados)
+  api('POST', L('/configuracoes'), dados)
     .then(function(res){
       if(res.sucesso){
         msg.innerHTML='<p class="text-sm text-green"><i class="fa-solid fa-check"></i> '+esc(res.mensagem)+'</p>';
@@ -2852,12 +2870,12 @@ function salvarTaraForm(){
   };
   var btn=document.querySelector('#modalFormCrud .btn-primary');
   if(btn){ btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px"></div>Salvando...'; }
-  api('POST', '/api/taras', dados)
+  api('POST', L('/taras'), dados)
     .then(function(res){
       if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i>Salvar'; }
       if(res.sucesso){
         fecharModal('modalFormCrud'); toast(res.mensagem,'success');
-        api('GET', '/api/taras')
+        api('GET', L('/taras'))
           .then(function(novas){
             if(ST.dados) ST.dados.taras=novas;
             var t=document.getElementById('tbodyTaras');
@@ -2922,7 +2940,7 @@ function salvarUsuarioForm(){
   var d={ID_Usuario:id,Nome:document.getElementById('f_nome').value.trim(),Login:document.getElementById('f_login').value.trim(),Senha:senhaDigitada||senhaAnterior,Cargo:document.getElementById('f_cargo').value,Status:document.getElementById('f_status').value,Foto_Perfil:document.getElementById('f_foto_perfil').value.trim()};
   if(!d.Nome||!d.Login){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Nome e login são obrigatórios.</p>'; return; }
   if(!d.Senha){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Senha obrigatória para novos usuários.</p>'; return; }
-  api('POST','/api/usuarios',d).then(function(res){ if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); navegarPara('abaConfig'); } else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; }).catch(function(e){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; });
+  api('POST', L('/usuarios'), d).then(function(res){ if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); navegarPara('abaConfig'); } else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; }).catch(function(e){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; });
 }
 
 function renderBairrosRows(){
@@ -2951,7 +2969,7 @@ function abrirFormBairro(id){
 function salvarBairroForm(){
   var d={ID_Bairro:document.getElementById('f_id').value,'Nome_Bairro':document.getElementById('f_nome').value.trim(),'Taxa_R$':parseFloat(document.getElementById('f_taxa').value)||0,Disponivel:document.getElementById('f_disp').value};
   if(!d.Nome_Bairro){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Nome obrigatório.</p>'; return; }
-  api('POST','/api/bairros',d).then(function(res){ if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); navegarPara('abaConfig'); } else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; }).catch(function(e){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; });
+  api('POST', L('/bairros'), d).then(function(res){ if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); navegarPara('abaConfig'); } else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; }).catch(function(e){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; });
 }
 
 function renderCuponsRows(){
@@ -3008,7 +3026,7 @@ function salvarCupomForm(){
     Usar_Cardapio:  document.getElementById('f_online').value
   };
   if(!d.Codigo_Cupom){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Código obrigatório.</p>'; return; }
-  api('POST', '/api/cupons', d)
+  api('POST', L('/cupons'), d)
     .then(function(res){
       if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); recarregarConfig(); }
       else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>';
