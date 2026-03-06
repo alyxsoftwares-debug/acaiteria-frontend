@@ -199,30 +199,6 @@
 
   <script>
 
-  async function carregarFaviconDinamico(lojaId) {
-    try {
-        const response = await fetch(`https://alyxsoftwares-acaiteria.onrender.com/api/lojas/${lojaId}/cardapio`);
-        const dados = await response.json();
-        
-        if (dados.configuracoes && dados.configuracoes.URL_Logo) {
-            let link = document.querySelector("link[rel~='icon']");
-            if (!link) {
-                link = document.createElement('link');
-                link.rel = 'icon';
-                document.head.appendChild(link);
-            }
-            link.href = dados.configuracoes.URL_Logo;
-        }
-    } catch (error) {
-        console.error("Erro ao carregar favicon:", error);
-    }
-}
-
-// Chame a função logo após descobrir quem é o lojaId
-const urlParams = new URLSearchParams(window.location.search);
-const lojaId = urlParams.get('loja');
-if (lojaId) carregarFaviconDinamico(lojaId);
-
   "use strict";
 
   // ═══ CONFIGURAÇÃO ════════════════════════════════════════
@@ -263,7 +239,7 @@ if (lojaId) carregarFaviconDinamico(lojaId);
 
     document.getElementById('inputUsuario').focus();
 
-    // Carrega logo e nome da loja em background (falha silenciosa — não crítica)
+    // Carrega logo, nome da loja e favicon em background (falha silenciosa — não crítica)
     apiPublica('GET', '/api/lojas/' + LOJA_ID + '/cardapio')
       .then(function (dados) {
         if (dados && dados.configuracoes) aplicarConfiguracoes(dados.configuracoes);
@@ -282,6 +258,11 @@ if (lojaId) carregarFaviconDinamico(lojaId);
 
     var urlLogo = (config['URL_Logo'] || '').toString().trim();
     if (!urlLogo) return;
+
+    // Atualiza favicon da aba do navegador
+    var link = document.querySelector("link[rel~='icon']");
+    if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+    link.href = urlLogo;
 
     var img   = document.getElementById('imgLogoLogin');
     var icone = document.getElementById('iconeLogin');
