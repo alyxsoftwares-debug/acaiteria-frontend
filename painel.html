@@ -587,29 +587,6 @@ table.tbl tr:last-child td{border-bottom:none}
 // Altere API_URL para a URL real do seu backend no Render após o deploy.
 var API_URL = 'https://alyxsoftwares-acaiteria.onrender.com'; // ← URL do seu backend no Render
 
-async function carregarFaviconDinamico(lojaId) {
-    try {
-        const response = await fetch(API_URL + '/api/lojas/' + lojaId + '/cardapio');
-        const dados = await response.json();
-        if (dados.configuracoes && dados.configuracoes.URL_Logo) {
-            let link = document.querySelector("link[rel~='icon']");
-            if (!link) {
-                link = document.createElement('link');
-                link.rel = 'icon';
-                document.head.appendChild(link);
-            }
-            link.href = dados.configuracoes.URL_Logo;
-        }
-    } catch (error) {
-        console.error("Erro ao carregar favicon:", error);
-    }
-}
-
-// Chame a função logo após descobrir quem é o lojaId
-const urlParams = new URLSearchParams(window.location.search);
-const lojaId = urlParams.get('loja');
-if (lojaId) carregarFaviconDinamico(lojaId);
-
 // ─── ID da loja lido da sessão (salvo pelo login.html) ─────────────────────
 var LOJA_ID = (function(){
   try{ var s=JSON.parse(sessionStorage.getItem('pdacai_user')||'{}'); return s.loja_id||''; }catch(e){ return ''; }
@@ -856,19 +833,29 @@ function carregarDados(){
 }
 
 // ── Som de novo pedido (Web Audio — sem arquivo externo) ────
-function tocarSomPedido(){
-  try{
-    var ctx=new(window.AudioContext||window.webkitAudioContext)();
-    function bip(freq,ini,dur){
-      var o=ctx.createOscillator(), g=ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.frequency.value=freq; o.type='sine';
-      g.gain.setValueAtTime(0.35,ctx.currentTime+ini);
-      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+ini+dur);
-      o.start(ctx.currentTime+ini); o.stop(ctx.currentTime+ini+dur+0.05);
+// Cria a variável fora da função para reutilizar
+var _audioCtx = null;
+
+function tocarSomPedido() {
+  try {
+    if (!_audioCtx) {
+      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    bip(880,0,0.12); bip(1100,0.15,0.12); bip(880,0.30,0.22);
-  }catch(e){}
+    // Navegadores suspendem o áudio se não houver interação prévia
+    if (_audioCtx.state === 'suspended') {
+      _audioCtx.resume();
+    }
+    function bip(freq, ini, dur) {
+      var o = _audioCtx.createOscillator(), g = _audioCtx.createGain();
+      o.connect(g); g.connect(_audioCtx.destination);
+      o.frequency.value = freq; o.type = 'sine';
+      g.gain.setValueAtTime(0.35, _audioCtx.currentTime + ini);
+      g.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + ini + dur);
+      o.start(_audioCtx.currentTime + ini); 
+      o.stop(_audioCtx.currentTime + ini + dur + 0.05);
+    }
+    bip(880, 0, 0.12); bip(1100, 0.15, 0.12); bip(880, 0.30, 0.22);
+  } catch(e) {}
 }
 
 function iniciarPolling(){
@@ -924,13 +911,18 @@ function construirUI(){
   var logoText=document.getElementById('sidebarLogoText');
   if(logoText) logoText.innerHTML=esc(nomeLoja)+'<br><span style="font-size:10px;opacity:.6">Painel v4.0</span>';
 
-  // Atualiza logo loading overlay (se ainda visível)
+  // Atualiza logo loading overlay e Favicon da aba de forma otimizada
   var ldrEmoji=document.getElementById('ldrLogoEmoji');
   var ldrImg=document.getElementById('ldrLogoImg');
-  if(urlLogo&&ldrEmoji&&ldrImg){
-    ldrEmoji.style.display='none';
-    ldrImg.src=urlLogo;
-    ldrImg.style.display='block';
+  if(urlLogo){
+    if(ldrEmoji && ldrImg){
+      ldrEmoji.style.display='none';
+      ldrImg.src=urlLogo;
+      ldrImg.style.display='block';
+    }
+    var link = document.querySelector("link[rel~='icon']");
+    if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+    link.href = urlLogo;
   }
 
   // Monta nav
@@ -1418,10 +1410,11 @@ function abrirPDVBalcao(){
         '<div class="caixa-total-row big"><span>Total</span><span id="b_r_total">R$ 0,00</span></div>'+
       '</div>'+
       '<div id="b_trocoDisplay" class="caixa-troco hidden">Troco: <span id="b_trocoVal">R$ 0,00</span></div>'+
-      '<button class="btn btn-full mt-3" onclick="adicionarAcaiBalcao()" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;font-weight:800;border-radius:12px;padding:14px;font-size:14px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s" onmouseover="this.style.opacity=\'.88\'" onmouseout="this.style.opacity=\'1\'">'+
-      '<i class="fa-solid fa-ice-cream"></i>Adicionar Açaí ao Carrinho <kbd style="font-size:9px;opacity:.65;background:rgba(255,255,255,.25);border-radius:4px;padding:1px 4px;margin-left:4px">F6</kbd></button>'+
-      '<button class="btn btn-primary btn-full mt-3" onclick="finalizarBalcao()" id="b_btnFinalizar">'+
-      '<i class="fa-solid fa-check-circle"></i>Finalizar Venda no Balcão <kbd style="font-size:9px;opacity:.65;background:rgba(255,255,255,.25);border-radius:4px;padding:1px 4px;margin-left:4px">F4</kbd></button>'+
+      '<div style="display:flex; gap:8px; margin-top:12px;">'+
+        '<button class="btn btn-primary" style="flex:1" onclick="finalizarBalcao()" id="b_btnFinalizar">'+
+        '<i class="fa-solid fa-check-circle"></i>Finalizar Venda no Balcão <kbd style="font-size:9px;opacity:.65;background:rgba(255,255,255,.25);border-radius:4px;padding:1px 4px;margin-left:4px">F4</kbd></button>'+
+        '<button class="btn btn-secondary" style="padding:0 18px;" onclick="imprimirUltimaVendaBalcao()" title="Imprimir Cupom"><i class="fa-solid fa-print"></i></button>'+
+      '</div>'+
       '<div id="b_finMsg" class="mt-3"></div>'+
     '</div>'+
     '</div>';
@@ -1686,6 +1679,10 @@ function finalizarBalcao(){
         ST.dados.pedidosDia.pedidos.unshift(novoItem);
         if(ST.abaAtiva!=='abaPedidos') navegarPara('abaPedidos');
         else renderPedidosDia();
+        window._ultimoPedidoBalcao = novoItem; // Salva para o botão manual
+        if(ST.dados.configuracoes && ST.dados.configuracoes.AutoImprimir_Balcao === 'SIM') {
+            imprimirCupom(novoItem);
+        }
       } else {
         msg.innerHTML='<p class="text-sm text-red"><i class="fa-solid fa-circle-xmark"></i> '+esc(res.mensagem)+'</p>';
       }
@@ -1953,7 +1950,8 @@ function recarregarPedidosDia(){
 // ═══════════════════════════════════════════════════════════
 function renderSecaoDelivery(){
   var sec=document.getElementById('abaDelivery');
-  sec.innerHTML=topBar('Delivery','Pedidos de entrega em andamento')+
+  var btnCarteira = (ST.usuario && ST.usuario.cargo === 'Entregador') ? '<button class="btn btn-primary" onclick="abrirCarteiraEntregador()"><i class="fa-solid fa-wallet"></i> Minha Carteira</button>' : '';
+  sec.innerHTML=topBar('Delivery','Pedidos de entrega em andamento', btnCarteira)+
   '<div class="page-content">'+
     '<div class="stat-grid" id="deliveryStats"></div>'+
     '<div id="listaDelivery"><div class="empty-state"><i class="fa-solid fa-motorcycle"></i><p>Carregando...</p></div></div>'+
@@ -2054,6 +2052,10 @@ function pegarDelivery(idVenda){
       if(res.sucesso){
         toast('Pedido atribuído a você!','success');
         recarregarDelivery();
+        if(ST.dados && ST.dados.configuracoes && ST.dados.configuracoes.AutoImprimir_Delivery === 'SIM') {
+            var pedPrint = (ST.dados.deliveryAtivo||[]).find(function(p){ return p.ID_Venda === idVenda; });
+            if(pedPrint) imprimirCupom(pedPrint);
+        }
       } else {
         toast(res.mensagem,'error');
         recarregarDelivery();
@@ -2358,8 +2360,9 @@ function abrirFormItem(id){
       fGroup('Categoria','f_cat','text',dados?dados.Categoria:'','Ex: Bebidas')+
     '</div>'+
     fGroup('Descrição','f_desc','text',dados?dados.Descricao:'','Descrição breve')+
-    '<div class="form-row cols-2">'+
+    '<div class="form-row cols-3">'+
       fGroup('Preço (R$) *','f_preco','number',dados?dados.Preco:'','0.00')+
+      fGroup('Ordem','f_ordem','number',dados?dados.Ordem||0:'','0')+
       fGroupSel('Disponível no PDV','f_disp',['SIM','NÃO'],dados?dados.Disponivel:'SIM')+
     '</div>'+
     fGroupSel('Aparecer no Cardápio Online','f_online',['SIM','NÃO'],dados?dados.Mostrar_Online||'SIM':'SIM')+
@@ -2378,6 +2381,7 @@ function salvarItem(){
     Categoria:      document.getElementById('f_cat').value.trim(),
     Descricao:      document.getElementById('f_desc').value.trim(),
     Preco:          parseFloat(document.getElementById('f_preco').value)||0,
+    Ordem:          parseInt(document.getElementById('f_ordem').value)||0,
     Disponivel:     document.getElementById('f_disp').value,
     Foto:           document.getElementById('f_foto').value.trim(),
     Mostrar_Online: document.getElementById('f_online').value
@@ -2431,7 +2435,12 @@ function recarregarDadosEAtualizar(tbodyId,renderFn,cacheKey){
 }
 
 function confirmarExcluir(aba,id,nome,fn){
+  // Otimização: Previne vazamento de memória limpando modais zumbis anteriores
+  var oldOverlay = document.getElementById('confirmOverlayExcluir');
+  if(oldOverlay) oldOverlay.remove();
+  
   var overlay=document.createElement('div');
+  overlay.id = 'confirmOverlayExcluir';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
   overlay.innerHTML='<div style="background:#fff;border-radius:16px;padding:28px 32px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
     +'<div style="width:48px;height:48px;background:#fef2f2;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><i class="fa-solid fa-trash" style="color:#ef4444;font-size:20px"></i></div>'
@@ -2665,13 +2674,18 @@ function salvarModelo(){
 function abrirFormCategoria(id){
   var d=id?((ST.dados&&ST.dados.acaiCategorias)||[]).find(function(x){ return x.ID_Categoria===id; }):null;
   document.getElementById('modalFormTitle').innerHTML='<i class="fa-solid fa-tags"></i> '+(d?'Editar Categoria':'Nova Categoria');
-  document.getElementById('modalFormBody').innerHTML='<input type="hidden" id="f_id" value="'+(d?esc(d.ID_Categoria):'')+'\"/>'+fGroup('Nome da Categoria *','f_nome','text',d?d.Nome_Categoria:'','')+' <div id="formMsg" class="mt-3"></div>';
+  document.getElementById('modalFormBody').innerHTML='<input type="hidden" id="f_id" value="'+(d?esc(d.ID_Categoria):'')+'"/>'+
+    '<div class="form-row cols-2">'+
+      fGroup('Nome da Categoria *','f_nome','text',d?d.Nome_Categoria:'','')+
+      fGroup('Ordem (Ex: 1, 2, 3...)','f_ordem','number',d?d.Ordem||0:'','0')+
+    '</div>'+
+    '<div id="formMsg" class="mt-3"></div>';
   document.getElementById('modalFormFooter').innerHTML='<button class="btn btn-secondary" onclick="fecharModal(\'modalFormCrud\')">Cancelar</button><button class="btn btn-primary" onclick="salvarCategoria()"><i class="fa-solid fa-check"></i>Salvar</button>';
   abrirModal('modalFormCrud');
 }
 
 function salvarCategoria(){
-  var d={ID_Categoria:document.getElementById('f_id').value,Nome_Categoria:document.getElementById('f_nome').value.trim()};
+  var d={ID_Categoria:document.getElementById('f_id').value,Nome_Categoria:document.getElementById('f_nome').value.trim(),Ordem:parseInt(document.getElementById('f_ordem').value)||0};
   if(!d.Nome_Categoria){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Nome obrigatório.</p>'; return; }
   api('POST', L('/acai-categorias'), d).then(function(res){ if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); recarregarMonteAcai(); } else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; }).catch(function(e){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; });
 }
@@ -2685,7 +2699,11 @@ function abrirFormIngrediente(id){
     '<input type="hidden" id="f_id" value="'+(d?esc(d.ID_Ingrediente):'')+'"/>'+
     '<div class="form-row cols-2">'+fGroup('Nome *','f_nome','text',d?d.Nome:'','')+
     '<div class="form-group"><label class="form-label">Categoria</label><select class="form-control" id="f_cat">'+catOpts+'</select></div></div>'+
-    '<div class="form-row cols-2">'+fGroup('Preço (R$)','f_preco','number',d?d.Preco:'','0.00')+fGroupSel('Disponível','f_disp',['SIM','NÃO'],d?d.Disponivel:'SIM')+'</div>'+
+    '<div class="form-row cols-3">'+
+      fGroup('Preço (R$)','f_preco','number',d?d.Preco:'','0.00')+
+      fGroup('Ordem (1, 2...)','f_ordem','number',d?d.Ordem||0:'','0')+
+      fGroupSel('Disponível','f_disp',['SIM','NÃO'],d?d.Disponivel:'SIM')+
+    '</div>'+
     fGroup('Descrição','f_desc','text',d?d.Descricao:'','')+
     fGroup('URL da Foto','f_foto','url',d?d.Foto:'','')+
     '<div id="formMsg" class="mt-3"></div>';
@@ -2694,7 +2712,7 @@ function abrirFormIngrediente(id){
 }
 
 function salvarIngrediente(){
-  var d={ID_Ingrediente:document.getElementById('f_id').value,ID_Categoria:document.getElementById('f_cat').value,Nome:document.getElementById('f_nome').value.trim(),Descricao:document.getElementById('f_desc').value.trim(),Preco:parseFloat(document.getElementById('f_preco').value)||0,Foto:document.getElementById('f_foto').value.trim(),Disponivel:document.getElementById('f_disp').value};
+  var d={ID_Ingrediente:document.getElementById('f_id').value,ID_Categoria:document.getElementById('f_cat').value,Nome:document.getElementById('f_nome').value.trim(),Descricao:document.getElementById('f_desc').value.trim(),Preco:parseFloat(document.getElementById('f_preco').value)||0,Ordem:parseInt(document.getElementById('f_ordem').value)||0,Foto:document.getElementById('f_foto').value.trim(),Disponivel:document.getElementById('f_disp').value};
   if(!d.Nome){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Nome obrigatório.</p>'; return; }
   api('POST', L('/acai-ingredientes'), d).then(function(res){ if(res.sucesso){ fecharModal('modalFormCrud'); toast(res.mensagem,'success'); recarregarMonteAcai(); } else document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">'+esc(res.mensagem)+'</p>'; }).catch(function(e){ document.getElementById('formMsg').innerHTML='<p class="text-sm text-red">Erro: '+esc(e)+'</p>'; });
 }
@@ -2799,6 +2817,19 @@ function renderConfigLoja(){
       '<input type="url" class="form-control" id="cfg_facebook" value="'+esc(c['Facebook_URL']||'')+'" placeholder="https://facebook.com/alyxsoftwares"/>'+
     '</div>'+
   '</div>'+
+  '<div style="border-top:1px solid #f3f4f6;margin:16px 0 14px;padding-top:14px">'+
+    '<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">'+
+      '<i class="fa-solid fa-print"></i> Impressão de Pedidos'+
+    '</div>'+
+    '<div class="form-row cols-2">'+
+      '<div class="form-group"><label class="form-label">Auto-imprimir PDV Balcão</label>'+
+        '<select class="form-control" id="cfg_print_balcao"><option value="SIM"'+(c['AutoImprimir_Balcao']==='SIM'?' selected':'')+'>SIM (Automático)</option><option value="NAO"'+(c['AutoImprimir_Balcao']!=='SIM'?' selected':'')+'>NÃO</option></select>'+
+      '</div>'+
+      '<div class="form-group"><label class="form-label">Auto-imprimir Delivery</label>'+
+        '<select class="form-control" id="cfg_print_delivery"><option value="SIM"'+(c['AutoImprimir_Delivery']==='SIM'?' selected':'')+'>SIM (Ao Pegar Pedido)</option><option value="NAO"'+(c['AutoImprimir_Delivery']!=='SIM'?' selected':'')+'>NÃO</option></select>'+
+      '</div>'+
+    '</div>'+
+  '</div>'+
   '<div class="form-group">'+
     '<label class="form-label"><i class="fa-solid fa-store"></i> Opção "Retirar na Loja" no Cardápio</label>'+
     '<select class="form-control" id="cfg_retirada">'+
@@ -2843,6 +2874,8 @@ function salvarConfiguracoes(){
     'WhatsApp_Link':   document.getElementById('cfg_wpp_link')  ? document.getElementById('cfg_wpp_link').value.trim()  : '',
     'Facebook_URL':        document.getElementById('cfg_facebook') ? document.getElementById('cfg_facebook').value.trim() : '',
     'Retirada_Loja_Ativo': document.getElementById('cfg_retirada')  ? document.getElementById('cfg_retirada').value  : 'SIM',
+    'AutoImprimir_Balcao': document.getElementById('cfg_print_balcao') ? document.getElementById('cfg_print_balcao').value : 'NAO',
+    'AutoImprimir_Delivery': document.getElementById('cfg_print_delivery') ? document.getElementById('cfg_print_delivery').value : 'NAO',
     'PIX_Modo':            document.getElementById('cfg_pix_modo')   ? document.getElementById('cfg_pix_modo').value   : 'MANUAL',
     'MP_AccessToken':      document.getElementById('cfg_mp_token')   ? document.getElementById('cfg_mp_token').value   : ''
   };
@@ -3184,4 +3217,72 @@ document.addEventListener('keydown', function(e){
     }
   }
 });
+
+// -- FUNÇÕES GLOBAIS DE IMPRESSÃO E CARTEIRA --
+function imprimirCupom(pedido) {
+    if(!pedido) return;
+    var janela = window.open('', '_blank', 'width=320,height=600');
+    var cli = {}; try{ cli = JSON.parse(pedido.Cliente_Info||'{}'); }catch(e){}
+    var itens = []; try{ itens = JSON.parse(pedido.Itens_Comprados||'[]'); }catch(e){}
+    var dataHora = pedido.Data_Hora || '--';
+    
+    var html = '<html><head><title>Cupom</title><style>body{font-family:monospace;width:300px;margin:0;padding:10px;color:#000;font-size:12px;} .center{text-align:center;} .linha{border-bottom:1px dashed #000;margin:10px 0;} .flex{display:flex;justify-content:space-between;}</style></head><body>';
+    html += '<h2 class="center" style="margin:5px 0;">PEDIDO: #' + (pedido.ID_Venda||'') + '</h2>';
+    html += '<div class="center">' + dataHora + '</div><div class="linha"></div>';
+    if(cli.nome) html += '<b>Cliente:</b> ' + cli.nome + '<br>';
+    if(cli.telefone) html += '<b>Tel:</b> ' + cli.telefone + '<br>';
+    if(cli.endereco) html += '<b>End:</b> ' + cli.endereco + '<br>';
+    html += '<b>Origem:</b> ' + (pedido.Origem||'--') + '<br><div class="linha"></div>';
+    
+    itens.forEach(function(i) {
+        html += '<div class="flex" style="font-weight:bold;"><span>' + (i.descricao||i.nome||'') + '</span><span>' + fmtMoeda(i.preco) + '</span></div>';
+        if(i.detalhes) html += '<div style="font-size:11px;margin-bottom:6px;color:#333;">' + i.detalhes + '</div>';
+    });
+    
+    html += '<div class="linha"></div>';
+    if(parseFloat(pedido.Subtotal||0) > 0) html += '<div class="flex"><span>Subtotal:</span><span>' + fmtMoeda(pedido.Subtotal) + '</span></div>';
+    if(parseFloat(pedido.Desconto||0) > 0) html += '<div class="flex"><span>Desconto:</span><span>-' + fmtMoeda(pedido.Desconto) + '</span></div>';
+    if(parseFloat(pedido.Taxa_Entrega||0) > 0) html += '<div class="flex"><span>Taxa Entrega:</span><span>' + fmtMoeda(pedido.Taxa_Entrega) + '</span></div>';
+    html += '<div class="flex" style="font-weight:bold;font-size:15px;margin-top:6px;"><span>TOTAL:</span><span>' + fmtMoeda(pedido.Total_Final) + '</span></div>';
+    html += '<div class="linha"></div><div class="center" style="font-weight:bold;">Forma de Pagamento:<br>' + (pedido.Metodo_Pagamento||'--') + '</div>';
+    html += '<div class="center" style="margin-top:20px;">*** OBRIGADO PELA PREFERENCIA ***</div>';
+    html += '</body></html>';
+    
+    janela.document.write(html);
+    janela.document.close();
+    janela.focus();
+    setTimeout(function(){ janela.print(); janela.close(); }, 800);
+}
+
+function imprimirUltimaVendaBalcao() {
+    if(window._ultimoPedidoBalcao) imprimirCupom(window._ultimoPedidoBalcao);
+    else toast('Nenhuma venda recente para imprimir.', 'warn');
+}
+
+function abrirCarteiraEntregador() {
+    var todosPedidos = (ST.dados && ST.dados.pedidosDia && ST.dados.pedidosDia.pedidos) || [];
+    var minhasEntregas = todosPedidos.filter(function(p) {
+        var st = (p.Status||'').toUpperCase();
+        var entregador = (p.Entregador_Nome||'').toLowerCase();
+        var meuNome = (ST.usuario.nome||'').toLowerCase();
+        return st === 'ENTREGUE' && p.Origem === 'DELIVERY' && entregador === meuNome;
+    });
+
+    var totalTaxas = minhasEntregas.reduce(function(sum, p) { return sum + parseFloat(p.Taxa_Entrega||0); }, 0);
+    var html = '<div class="stat-grid mb-4"><div class="stat-card stat-green" style="padding:16px;"><div class="stat-icon" style="margin-bottom:8px;"><i class="fa-solid fa-money-bill-wave"></i></div><div class="stat-label">Total em Taxas (Hoje)</div><div class="stat-value">' + fmtMoeda(totalTaxas) + '</div><div class="stat-sub">' + minhasEntregas.length + ' entregas concluídas</div></div></div>';
+
+    if(!minhasEntregas.length) {
+        html += '<div class="empty-state"><i class="fa-solid fa-wallet"></i><p>Nenhuma entrega concluída hoje ainda.</p></div>';
+    } else {
+        html += '<div style="display:grid;gap:12px;max-height:50vh;overflow-y:auto;padding-right:5px;">' + minhasEntregas.map(function(p){
+            var cli = parseCliente(p.Cliente_Info);
+            return '<div class="pedido-card" style="margin:0;"><div class="pedido-card-header" style="margin:0;"><div><div class="pedido-card-id">' + esc(p.ID_Venda) + '</div><div class="pedido-card-cliente">' + esc(cli.nome||'Cliente') + '</div><div class="pedido-card-hora"><i class="fa-regular fa-clock"></i> ' + esc(fmtHora(p.Data_Hora)) + '</div></div><div><span class="badge badge-entregue">Taxa: ' + fmtMoeda(p.Taxa_Entrega) + '</span></div></div></div>';
+        }).join('') + '</div>';
+    }
+
+    document.getElementById('modalFormTitle').innerHTML = '<i class="fa-solid fa-wallet text-green"></i> Minha Carteira (Hoje)';
+    document.getElementById('modalFormBody').innerHTML = html;
+    document.getElementById('modalFormFooter').innerHTML = '<button class="btn btn-secondary" onclick="fecharModal(\'modalFormCrud\')">Fechar</button>';
+    abrirModal('modalFormCrud');
+}
 </script>
