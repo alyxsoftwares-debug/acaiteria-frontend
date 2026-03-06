@@ -646,7 +646,8 @@ var _FN_MAP = {
   excluirBairro:          [L('/bairros'),           'DELETE'],
   excluirCupom:           [L('/cupons'),            'DELETE'],
   excluirTara:            [L('/taras'),             'DELETE'],
-  excluirUsuario:         [L('/usuarios'),          'DELETE']
+  excluirUsuario:         [L('/usuarios'),          'DELETE'],
+  excluirPedido:          [L('/pedidos'),           'DELETE']
 };
 
 // Mapa: cacheKey → endpoint GET para recarregar lista
@@ -1211,6 +1212,7 @@ function renderPedidoCard(p){
     canceladoPor+
     '<div class="pedido-card-footer">'+
       '<button class="btn btn-sm btn-secondary" onclick="verDetalhesPedido(\''+esc(p.ID_Venda)+'\')"><i class="fa-solid fa-eye"></i>Detalhes</button>'+
+      '<button class="btn btn-sm btn-secondary" onclick="imprimirCupomBusca(\''+esc(p.ID_Venda)+'\')" title="Imprimir Cupom"><i class="fa-solid fa-print"></i></button>'+
       (podeCancelar?'<button class="btn btn-sm btn-danger" onclick="pedirCancelamento(\''+esc(p.ID_Venda)+'\')"><i class="fa-solid fa-ban"></i>Cancelar</button>':'')+
     '</div>'+
   '</div>';
@@ -1278,6 +1280,10 @@ function verDetalhesPedido(id){
   if(!p){
     var delivery=ST.dados.deliveryAtivo||[];
     p=delivery.find(function(x){ return x.ID_Venda===id; });
+  }
+  // Se ainda não encontrou, procura nos relatórios carregados na tela
+  if(!p && window._relatorioAtual){
+    p = window._relatorioAtual.find(function(x){ return x.ID_Venda===id; });
   }
   if(!p){ toast('Pedido não encontrado na listagem atual.','warn'); return; }
   var cli=parseCliente(p.Cliente_Info);
@@ -2234,7 +2240,7 @@ function renderSecaoRelatorios(){
           '<table class="tbl">'+
             '<thead><tr>'+
               '<th>ID</th><th>Data/Hora</th><th>Cliente</th><th>Origem</th>'+
-              '<th>Pagamento</th><th>Operador</th><th>Total</th><th>Status</th>'+
+              '<th>Pagamento</th><th>Operador/Entregador</th><th>Total</th><th>Status</th><th>Ações</th>'+
             '</tr></thead>'+
             '<tbody id="relTbody"><tr><td colspan="8" style="text-align:center;padding:30px;color:#9ca3af">Aplicando filtros...</td></tr></tbody>'+
           '</table>'+
@@ -2280,6 +2286,17 @@ function carregarRelatorio(){
 function renderRelatorio(data){
   var pedidos=data.pedidos||[];
   var resumo=data.resumo||{};
+  window._relatorioAtual = pedidos; // Salva para uso na impressora
+
+  // Garante que o Entregador também seja filtrado se for digitado na barra de pesquisa
+  var opSearch = (document.getElementById('rel_operador').value || '').trim().toLowerCase();
+  if (opSearch) {
+      pedidos = pedidos.filter(function(p) {
+          var op = (p.Operador || '').toLowerCase();
+          var en = (p.Entregador_Nome || '').toLowerCase();
+          return op.indexOf(opSearch) > -1 || en.indexOf(opSearch) > -1;
+      });
+  }
 
   // Cards de resumo
   var sc=document.getElementById('relSummaryCards');
@@ -2311,16 +2328,24 @@ function renderRelatorio(data){
   }
   tbody.innerHTML=pedidos.map(function(p){
     var cli=parseCliente(p.Cliente_Info);
-    return '<tr>'+
-      '<td><span style="font-size:11px;font-weight:700;color:#7c3aed">'+esc(p.ID_Venda)+'</span></td>'+
-      '<td><div style="font-size:12px">'+esc(fmtData(p.Data_Hora))+'</div><div style="font-size:11px;color:#9ca3af">'+esc(fmtHora(p.Data_Hora))+'</div></td>'+
-      '<td>'+esc(cli.nome||'--')+'</td>'+
-      '<td>'+badgeOrigem(p.Origem)+'</td>'+
-      '<td><span style="font-size:12px">'+esc(p.Metodo_Pagamento||'--')+'</span></td>'+
-      '<td><span style="font-size:12px">'+esc(p.Operador||'--')+'</span></td>'+
-      '<td><strong style="color:#7c3aed">'+fmtMoeda(p.Total_Final)+'</strong></td>'+
-      '<td>'+badgeStatus(p.Status)+'</td>'+
-    '</tr>';
+    var opText = esc(p.Operador||'--');
+  if(p.Origem === 'DELIVERY' && p.Entregador_Nome) opText += '<br><span style="font-size:10px;color:#f97316"><i class="fa-solid fa-motorcycle"></i> ' + esc(p.Entregador_Nome) + '</span>';
+
+  return '<tr>'+
+    '<td><span style="font-size:11px;font-weight:700;color:#7c3aed">'+esc(p.ID_Venda)+'</span></td>'+
+    '<td><div style="font-size:12px">'+esc(fmtData(p.Data_Hora))+'</div><div style="font-size:11px;color:#9ca3af">'+esc(fmtHora(p.Data_Hora))+'</div></td>'+
+    '<td>'+esc(cli.nome||'--')+'</td>'+
+    '<td>'+badgeOrigem(p.Origem)+'</td>'+
+    '<td><span style="font-size:12px">'+esc(p.Metodo_Pagamento||'--')+'</span></td>'+
+    '<td><span style="font-size:12px">'+opText+'</span></td>'+
+    '<td><strong style="color:#7c3aed">'+fmtMoeda(p.Total_Final)+'</strong></td>'+
+    '<td>'+badgeStatus(p.Status)+'</td>'+
+    '<td><div class="flex gap-2">'+
+      '<button class="btn btn-xs btn-secondary" onclick="verDetalhesPedido(\''+esc(p.ID_Venda)+'\')" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>'+
+      '<button class="btn btn-xs btn-secondary" onclick="imprimirCupomBusca(\''+esc(p.ID_Venda)+'\')" title="Imprimir Cupom"><i class="fa-solid fa-print"></i></button>'+
+      (ST.usuario.cargo === 'Dono' ? '<button class="btn btn-xs btn-danger" onclick="confirmarExcluir(\'Venda\',\''+esc(p.ID_Venda)+'\',\''+esc(p.ID_Venda)+'\',\'excluirPedido\')" title="Excluir Definitivamente"><i class="fa-solid fa-trash"></i></button>' : '')+
+    '</div></td>'+
+  '</tr>';
   }).join('');
 }
 
@@ -3262,6 +3287,16 @@ document.addEventListener('keydown', function(e){
 });
 
 // -- FUNÇÕES GLOBAIS DE IMPRESSÃO E CARTEIRA --
+function imprimirCupomBusca(id) {
+    var p = null;
+    if(ST.dados && ST.dados.pedidosDia) p = ST.dados.pedidosDia.pedidos.find(function(x){return x.ID_Venda === id;});
+    if(!p && ST.dados && ST.dados.deliveryAtivo) p = ST.dados.deliveryAtivo.find(function(x){return x.ID_Venda === id;});
+    if(!p && window._relatorioAtual) p = window._relatorioAtual.find(function(x){return x.ID_Venda === id;});
+    
+    if(p) imprimirCupom(p);
+    else toast('Pedido não encontrado para impressão.', 'error');
+}
+
 function imprimirCupom(pedido) {
     if(!pedido) return;
     var janela = window.open('', '_blank', 'width=320,height=600');
@@ -3335,12 +3370,20 @@ function imprimirUltimaVendaBalcao() {
 }
 
 function abrirCarteiraEntregador() {
-    var todosPedidos = (ST.dados && ST.dados.pedidosDia && ST.dados.pedidosDia.pedidos) || [];
-    var minhasEntregas = todosPedidos.filter(function(p) {
+    var ativos = (ST.dados && ST.dados.deliveryAtivo) || [];
+    var concluidos = (ST.dados && ST.dados.pedidosDia && ST.dados.pedidosDia.pedidos) || [];
+    var todosPedidos = concluidos.concat(ativos);
+    
+    // Remove duplicados caso existam nas duas listas
+    var map = {};
+    var unicos = todosPedidos.filter(function(p) { if(map[p.ID_Venda]) return false; map[p.ID_Venda]=true; return true; });
+
+    var minhasEntregas = unicos.filter(function(p) {
         var st = (p.Status||'').toUpperCase();
-        var entregador = (p.Entregador_Nome||'').toLowerCase();
-        var meuNome = (ST.usuario.nome||'').toLowerCase();
-        return st === 'ENTREGUE' && p.Origem === 'DELIVERY' && entregador === meuNome;
+        // O trim() remove espaços invisíveis que causam o bug do valor zerado
+        var entregador = (p.Entregador_Nome || p.Operador || '').toLowerCase().trim();
+        var meuNome = (ST.usuario.nome||'').toLowerCase().trim();
+        return st === 'ENTREGUE' && (p.Origem||'').toUpperCase() === 'DELIVERY' && entregador === meuNome;
     });
 
     var totalTaxas = minhasEntregas.reduce(function(sum, p) { return sum + parseFloat(p.Taxa_Entrega||0); }, 0);
