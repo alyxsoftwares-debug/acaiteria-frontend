@@ -511,6 +511,7 @@ table.tbl tr:last-child td{border-bottom:none}
     <!-- Seções -->
     <div id="abaPedidos"   class="aba-section hidden"></div>
     <div id="abaDelivery"  class="aba-section hidden"></div>
+    <div id="abaRetirada"  class="aba-section hidden"></div>
     <div id="abaRelatorios"class="aba-section hidden"></div>
     <div id="abaItens"     class="aba-section hidden"></div>
     <div id="abaMonteAcai" class="aba-section hidden"></div>
@@ -702,6 +703,7 @@ var ST = {
 var ABAS = [
   { id:'abaPedidos',    label:'PDV & Pedidos', icon:'fa-cash-register'  },
   { id:'abaDelivery',   label:'Delivery',       icon:'fa-motorcycle'     },
+  { id:'abaRetirada',   label:'Retirada',       icon:'fa-store'          },
   { id:'abaRelatorios', label:'Relatórios',     icon:'fa-chart-bar'      },
   { id:'abaItens',      label:'Itens Fixos',    icon:'fa-burger'         },
   { id:'abaMonteAcai',  label:'Monte Açaí',     icon:'fa-ice-cream'      },
@@ -963,6 +965,7 @@ function iniciarPolling(){
         ST.dados.deliveryAtivo = res.deliveryAtivo;
         if(ST.abaAtiva==='abaPedidos')  renderPedidosDia();
         if(ST.abaAtiva==='abaDelivery') renderDelivery();
+        if(ST.abaAtiva==='abaRetirada') renderRetirada();
       })
       .catch(function(){});
   }, 8000);
@@ -1034,6 +1037,7 @@ function construirUI(){
   // Renderiza cada seção
   renderSecaoPedidos();
   renderSecaoDelivery();
+  renderSecaoRetirada();
   renderSecaoRelatorios();
   renderSecaoItens();
   renderSecaoMonteAcai();
@@ -1078,6 +1082,7 @@ function navegarPara(id){
   // Ações ao entrar na aba
   if(id==='abaPedidos')    { renderPedidosDia(); }
   if(id==='abaDelivery')   { renderDelivery(); }
+  if(id==='abaRetirada')   { renderRetirada(); }
   if(id==='abaRelatorios') { carregarRelatorio(); }
   if(id==='abaConfig')     { renderSecaoConfig(); }
 }
@@ -1090,6 +1095,7 @@ function topBar(titulo, subtitulo, btnsHTML){
 function refreshAbaAtual(){
   if(ST.abaAtiva==='abaPedidos')          recarregarPedidosDia();
   else if(ST.abaAtiva==='abaDelivery')    recarregarDelivery();
+  else if(ST.abaAtiva==='abaRetirada')    recarregarRetirada();
   else if(ST.abaAtiva==='abaRelatorios')  carregarRelatorio();
   else if(ST.abaAtiva==='abaMonteAcai')   recarregarMonteAcai();
   else if(ST.abaAtiva==='abaItens')       recarregarItens();
@@ -2075,23 +2081,31 @@ function renderDelivery(){
   var lista=document.getElementById('listaDelivery');
   if(!lista) return;
 
+  // Esconde os "ENTREGUE" e não mostra os pedidos que são para "Retirada na loja"
+  var pedidosVisiveis = pedidos.filter(function(p){ 
+      if ((p.Status||'').toUpperCase() === 'ENTREGUE') return false;
+      var cli = parseCliente(p.Cliente_Info);
+      if (cli.endereco === 'Retirada na loja') return false;
+      return true; 
+  });
+
   if(stats){
-    var novo=pedidos.filter(function(p){ return (p.Status||'').toUpperCase()==='NOVO'; }).length;
-    var montagem=pedidos.filter(function(p){ return (p.Status||'').toUpperCase()==='EM_MONTAGEM'; }).length;
-    var caminho=pedidos.filter(function(p){ return (p.Status||'').toUpperCase()==='A_CAMINHO'; }).length;
+    var novo=pedidosVisiveis.filter(function(p){ return (p.Status||'').toUpperCase()==='NOVO'; }).length;
+    var montagem=pedidosVisiveis.filter(function(p){ return (p.Status||'').toUpperCase()==='EM_MONTAGEM'; }).length;
+    var caminho=pedidosVisiveis.filter(function(p){ return (p.Status||'').toUpperCase()==='A_CAMINHO'; }).length;
     stats.innerHTML=
       statMini('fa-circle-dot','Novos','stat-blue',novo)+
       statMini('fa-box','Montagem','stat-purple',montagem)+
       statMini('fa-motorcycle','A Caminho','stat-orange',caminho)+
-      statMini('fa-boxes-stacked','Total Ativo','stat-green',pedidos.length);
+      statMini('fa-boxes-stacked','Total Ativo','stat-green',pedidosVisiveis.length);
   }
 
-  if(!pedidos.length){
+  if(!pedidosVisiveis.length){
     lista.innerHTML='<div class="empty-state"><i class="fa-solid fa-motorcycle"></i><p>Nenhum pedido de delivery em andamento</p></div>';
     return;
   }
 
-  var ordenados=pedidos.slice().sort(function(a,b){
+  var ordenados=pedidosVisiveis.slice().sort(function(a,b){
     var ordem={NOVO:0,EM_MONTAGEM:1,A_CAMINHO:2};
     var oa=ordem[(a.Status||'').toUpperCase()]||3;
     var ob=ordem[(b.Status||'').toUpperCase()]||3;
@@ -2137,12 +2151,13 @@ function renderDeliveryCard(p){
       '<div style="font-size:12px;color:#6b7280"><i class="fa-regular fa-clock"></i> '+esc(fmtHora(p.Data_Hora))+'</div>'+
     '</div>'+
     '<div class="mb-3">'+entregadorHTML+'</div>'+
-    '<div class="flex gap-2 flex-wrap">'+
-      (podePegar&&!euPeguei?'<button class="btn btn-primary btn-sm" onclick="pegarDelivery(\''+esc(p.ID_Venda)+'\')"><i class="fa-solid fa-hand"></i>Pegar Pedido</button>':'')+
-      (euPeguei||podeVer?'<button class="btn btn-secondary btn-sm" onclick="verDetalheDelivery(\''+esc(p.ID_Venda)+'\')"><i class="fa-solid fa-box"></i>Detalhes / Status</button>':'')+
-      (!euPeguei&&jaPego&&!podeVer?'<button class="btn btn-secondary btn-sm" onclick="verDetalheDelivery(\''+esc(p.ID_Venda)+'\')"><i class="fa-solid fa-eye"></i>Ver Detalhes</button>':'')+
-    '</div>'+
-  '</div>';
+          '<div class="flex gap-2 flex-wrap">'+
+            (podePegar&&!euPeguei?'<button class="btn btn-primary btn-sm" onclick="pegarDelivery(\''+esc(p.ID_Venda)+'\')"><i class="fa-solid fa-hand"></i>Pegar Pedido</button>':'')+
+            (euPeguei||podeVer?'<button class="btn btn-secondary btn-sm" onclick="verDetalheDelivery(\''+esc(p.ID_Venda)+'\')"><i class="fa-solid fa-box"></i>Detalhes / Status</button>':'')+
+            (!euPeguei&&jaPego&&!podeVer?'<button class="btn btn-secondary btn-sm" onclick="verDetalheDelivery(\''+esc(p.ID_Venda)+'\')"><i class="fa-solid fa-eye"></i>Ver Detalhes</button>':'')+
+            ((ST.usuario && ST.usuario.cargo !== 'Entregador') ? '<button class="btn btn-secondary btn-sm" onclick="imprimirCupomBusca(\''+esc(p.ID_Venda)+'\')" title="Imprimir Cupom"><i class="fa-solid fa-print"></i></button>' : '')+
+          '</div>'+
+        '</div>';
 }
 
 function pegarDelivery(idVenda){
@@ -2223,6 +2238,161 @@ function mudarStatusDelivery(idVenda,novoStatus){
         toast('Status atualizado!','success');
         fecharModal('modalDetalheDelivery');
         recarregarDelivery();
+      } else {
+        toast(res.mensagem||'Erro','error');
+      }
+    })
+    .catch(function(e){ toast('Erro: '+e,'error'); });
+}
+
+// ═══════════════════════════════════════════════════════════
+// ABA: RETIRADA
+// ═══════════════════════════════════════════════════════════
+function renderSecaoRetirada(){
+  var sec=document.getElementById('abaRetirada');
+  if(!sec) return;
+  sec.innerHTML=topBar('Retirada na Loja','Pedidos online aguardando retirada', '')+
+  '<div class="page-content">'+
+    '<div class="stat-grid" id="retiradaStats"></div>'+
+    '<div id="listaRetirada"><div class="empty-state"><i class="fa-solid fa-store"></i><p>Carregando...</p></div></div>'+
+  '</div>';
+  renderRetirada();
+}
+
+function recarregarRetirada(){
+  var lista=document.getElementById('listaRetirada');
+  if(lista) lista.innerHTML='<div style="text-align:center;padding:30px"><div class="spinner" style="margin:auto"></div></div>';
+  api('GET', L('/pedidos/dia'))
+    .then(function(res){
+      if(ST.dados) ST.dados.pedidosDia=res;
+      renderRetirada();
+    })
+    .catch(function(){ renderRetirada(); });
+}
+
+function renderRetirada(){
+  var todos = (ST.dados && ST.dados.pedidosDia && ST.dados.pedidosDia.pedidos) || [];
+  var pedidos = todos.filter(function(p){
+     if((p.Origem||'').toUpperCase() !== 'ONLINE') return false;
+     if((p.Status||'').toUpperCase() === 'ENTREGUE' || (p.Status||'').toUpperCase() === 'CANCELADO') return false;
+     var cli = parseCliente(p.Cliente_Info);
+     return cli.endereco === 'Retirada na loja';
+  });
+
+  var stats=document.getElementById('retiradaStats');
+  var lista=document.getElementById('listaRetirada');
+  if(!lista) return;
+
+  if(stats){
+    var novo=pedidos.filter(function(p){ return (p.Status||'').toUpperCase()==='NOVO'; }).length;
+    var prep=pedidos.filter(function(p){ return (p.Status||'').toUpperCase()==='EM_MONTAGEM' || (p.Status||'').toUpperCase()==='PREPARANDO'; }).length;
+    var pronto=pedidos.filter(function(p){ return (p.Status||'').toUpperCase()==='PRONTO'; }).length;
+    stats.innerHTML=
+      statMini('fa-circle-dot','Novos','stat-blue',novo)+
+      statMini('fa-fire-burner','Preparando','stat-purple',prep)+
+      statMini('fa-box-open','Prontos','stat-green',pronto)+
+      statMini('fa-store','Total Ativo','stat-orange',pedidos.length);
+  }
+
+  if(!pedidos.length){
+    lista.innerHTML='<div class="empty-state"><i class="fa-solid fa-store text-purple-200"></i><p>Nenhum pedido para retirada no momento</p></div>';
+    return;
+  }
+
+  var ordenados=pedidos.slice().sort(function(a,b){
+    var ordem={NOVO:0,PREPARANDO:1,EM_MONTAGEM:1,PRONTO:2};
+    var oa=ordem[(a.Status||'').toUpperCase()]||3;
+    var ob=ordem[(b.Status||'').toUpperCase()]||3;
+    function _sk(s){ var p=(s||'').split(' ');var d=p[0].split('/');return (d[2]||'')+'/'+(d[1]||'')+'/'+(d[0]||'')+' '+(p[1]||''); }
+    return oa-ob||_sk(b.Data_Hora||'').localeCompare(_sk(a.Data_Hora||''));
+  });
+
+  lista.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">'+
+    ordenados.map(renderRetiradaCard).join('')+'</div>';
+}
+
+function renderRetiradaCard(p){
+  var cli=parseCliente(p.Cliente_Info);
+  var st=(p.Status||'').toUpperCase();
+
+  return '<div class="delivery-card" style="border-color:#e9d5ff">'+
+    '<div class="flex justify-between items-center mb-3">'+
+      '<div>'+
+        '<div style="font-size:11px;font-weight:700;color:#9ca3af">'+esc(p.ID_Venda)+'</div>'+
+        '<div style="font-size:14px;font-weight:800;color:#1e1b4b;margin-top:2px">'+esc(cli.nome||'Cliente')+'</div>'+
+        '<div style="font-size:12px;color:#6b7280"><i class="fa-solid fa-phone"></i> '+esc(cli.telefone||'--')+'</div>'+
+      '</div>'+
+      badgeStatus(p.Status)+
+    '</div>'+
+    '<div style="background:#f5f3ff;border-radius:8px;padding:8px 10px;font-size:12px;color:#6d28d9;margin-bottom:10px;font-weight:bold"><i class="fa-solid fa-store text-purple-500"></i> Retirada na Loja</div>'+
+    '<div class="flex justify-between items-center mb-3">'+
+      '<div style="font-size:16px;font-weight:900;color:#7c3aed">'+fmtMoeda(p.Total_Final)+'</div>'+
+      '<div style="font-size:12px;color:#6b7280"><i class="fa-regular fa-clock"></i> '+esc(fmtHora(p.Data_Hora))+'</div>'+
+    '</div>'+
+    '<div class="flex gap-2 flex-wrap">'+
+      '<button class="btn btn-primary btn-sm" onclick="verDetalheRetirada(\''+esc(p.ID_Venda)+'\')"><i class="fa-solid fa-box"></i>Avançar Status / Detalhes</button>'+
+      '<button class="btn btn-secondary btn-sm" onclick="imprimirCupomBusca(\''+esc(p.ID_Venda)+'\')" title="Imprimir Cupom"><i class="fa-solid fa-print"></i></button>'+
+    '</div>'+
+  '</div>';
+}
+
+function statusBtnRetirada(val,atual,icon,label,idVenda){
+  var isAtivo=(val===atual);
+  return '<button class="status-step-btn'+(isAtivo?' active':'')+'" onclick="mudarStatusRetirada(\''+idVenda+'\',\''+val+'\')">'+
+    '<i class="fa-solid '+icon+'" style="display:block;font-size:16px;margin-bottom:4px"></i>'+label+'</button>';
+}
+
+function verDetalheRetirada(idVenda){
+  var pedidos=(ST.dados&&ST.dados.pedidosDia&&ST.dados.pedidosDia.pedidos)||[];
+  var p=pedidos.find(function(x){ return x.ID_Venda===idVenda; });
+  if(!p) { toast('Pedido não encontrado.','warn'); return; }
+
+  var cli=parseCliente(p.Cliente_Info);
+  var itens=parseItens(p.Itens_Comprados);
+  var st=(p.Status||'').toUpperCase();
+
+  var itensHTML=itens.map(function(it){
+    return '<div style="padding:8px 0;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between">'+
+      '<div><div style="font-weight:600;font-size:13px">'+esc(it.descricao||it.nome||'Item')+'</div>'+
+      (it.detalhes?'<div style="font-size:11px;color:#9ca3af">'+esc(it.detalhes)+'</div>':'')+
+      '</div><div style="font-weight:800;color:#7c3aed">'+fmtMoeda(it.preco)+'</div></div>';
+  }).join('');
+
+  document.getElementById('modalDetalheDeliveryBody').innerHTML=
+    '<div class="flex gap-2 mb-4">'+badgeStatus(p.Status)+badgeOrigem(p.Origem)+'</div>'+
+    '<div class="grid-2 mb-3">'+
+      infoBox('Cliente',cli.nome||'--')+
+      infoBox('Telefone',cli.telefone||'--')+
+    '</div>'+
+    '<div class="form-group mb-3"><label class="form-label">Endereço</label><div style="padding:10px;background:#f5f3ff;border-radius:8px;font-size:13px;color:#6d28d9;font-weight:bold"><i class="fa-solid fa-store"></i> Retirada na Loja</div></div>'+
+    '<div class="form-group mb-3"><label class="form-label">Itens do Pedido</label>'+itensHTML+'</div>'+
+    '<div class="caixa-total">'+
+      '<div class="caixa-total-row"><span>Subtotal</span><span>'+fmtMoeda(p.Subtotal)+'</span></div>'+
+      (parseFloat(p.Desconto)>0?'<div class="caixa-total-row"><span>Desconto</span><span style="color:#16a34a">-'+fmtMoeda(p.Desconto)+'</span></div>':'')+
+      '<div class="caixa-total-row big"><span>Total</span><span>'+fmtMoeda(p.Total_Final)+'</span></div>'+
+    '</div>'+
+    '<div style="font-size:12px;color:#9ca3af;margin-top:8px"><i class="fa-solid fa-credit-card"></i> Pagamento: '+esc(p.Metodo_Pagamento||'--')+'</div>'+
+    (st!=='ENTREGUE'?
+      '<div class="mt-4"><label class="form-label">Atualizar Status</label>'+
+      '<div class="status-steps">'+
+        statusBtnRetirada('PREPARANDO',st,'fa-fire-burner','Preparando',idVenda)+
+        statusBtnRetirada('PRONTO',    st,'fa-box-open','Pronto',idVenda)+
+        statusBtnRetirada('ENTREGUE',  st,'fa-check-double','Entregue',idVenda)+
+      '</div></div>':'');
+
+  var footer='<button class="btn btn-secondary" onclick="fecharModal(\'modalDetalheDelivery\')">Fechar</button>';
+  document.getElementById('modalDetalheDeliveryFooter').innerHTML=footer;
+  abrirModal('modalDetalheDelivery');
+}
+
+function mudarStatusRetirada(idVenda,novoStatus){
+  api('PATCH', L('/pedidos/') + idVenda + '/status', { status: novoStatus })
+    .then(function(res){
+      if(res.sucesso){
+        toast('Status atualizado!','success');
+        fecharModal('modalDetalheDelivery');
+        recarregarRetirada();
+        if(ST.abaAtiva==='abaPedidos') recarregarPedidosDia();
       } else {
         toast(res.mensagem||'Erro','error');
       }
@@ -3447,12 +3617,16 @@ function abrirCarteiraEntregador() {
     var unicos = todosPedidos.filter(function(p) { if(map[p.ID_Venda]) return false; map[p.ID_Venda]=true; return true; });
 
     var minhasEntregas = unicos.filter(function(p) {
-        var st = (p.Status||'').toUpperCase();
-        // O trim() remove espaços invisíveis que causam o bug do valor zerado
-        var entregador = (p.Entregador_Nome || p.Operador || '').toLowerCase().trim();
-        var meuNome = (ST.usuario.nome||'').toLowerCase().trim();
-        return st === 'ENTREGUE' && (p.Origem||'').toUpperCase() === 'DELIVERY' && entregador === meuNome;
-    });
+                var st = (p.Status||'').toUpperCase();
+                var origem = (p.Origem||'').toUpperCase();
+                
+                // Usa estritamente o nome do Entregador (evita puxar o Operador do caixa por engano)
+                var entregador = (p.Entregador_Nome || '').toLowerCase().trim();
+                var meuNome = (ST.usuario.nome || '').toLowerCase().trim();
+                
+                // Aceita as entregas lançadas no PDV (DELIVERY) e as que vieram do App (ONLINE)
+                return st === 'ENTREGUE' && (origem === 'DELIVERY' || origem === 'ONLINE') && entregador === meuNome;
+            });
 
     var totalTaxas = minhasEntregas.reduce(function(sum, p) { return sum + parseFloat(p.Taxa_Entrega||0); }, 0);
     var html = '<div class="stat-grid mb-4"><div class="stat-card stat-green" style="padding:16px;"><div class="stat-icon" style="margin-bottom:8px;"><i class="fa-solid fa-money-bill-wave"></i></div><div class="stat-label">Total em Taxas (Hoje)</div><div class="stat-value">' + fmtMoeda(totalTaxas) + '</div><div class="stat-sub">' + minhasEntregas.length + ' entregas concluídas</div></div></div>';
