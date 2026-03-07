@@ -16,6 +16,14 @@
     await OneSignal.init({
       appId: "c7565fa8-cd8c-4264-85b4-1a9d9cf150af",
     });
+    
+    // Associa o celular do entregador à loja para ele não receber notificações de outras lojas
+    try {
+      var s = JSON.parse(sessionStorage.getItem('pdacai_user') || '{}');
+      if (s.loja_id) {
+        OneSignal.User.addTag("loja_id", s.loja_id);
+      }
+    } catch(e) {}
   });
 </script>
 
