@@ -901,6 +901,23 @@ function tocarSomPedido() {
   } catch(e) {}
 }
 
+function dispararNotificacaoLocal(titulo, corpo) {
+  tocarSomPedido();
+  try {
+    if (window.Notification && Notification.permission === 'granted') {
+      var icone = (ST.dados && ST.dados.configuracoes && ST.dados.configuracoes.URL_Logo) ? ST.dados.configuracoes.URL_Logo : '';
+      navigator.serviceWorker.getRegistration().then(function(reg) {
+        if (reg) {
+          // Vira uma notificação nativa do Android/iOS que acende a tela
+          reg.showNotification(titulo, { body: corpo, icon: icone, vibrate: [300, 100, 300, 100, 300] });
+        } else {
+          new Notification(titulo, { body: corpo, icon: icone });
+        }
+      });
+    }
+  } catch(e) {}
+}
+
 function iniciarPolling(){
   if(ST.pollingTimer) clearInterval(ST.pollingTimer);
   ST.pollingTimer=setInterval(function(){
@@ -911,7 +928,9 @@ function iniciarPolling(){
           if(!ST.dados) return;
           ST.dados.deliveryAtivo = res;
           var novos=(res||[]).filter(function(p){ return (p.Status||'').toString().toUpperCase()==='NOVO'; }).length;
-          if(ST._qtdDeliveryAnterior>=0 && novos>ST._qtdDeliveryAnterior) tocarSomPedido();
+          if(ST._qtdDeliveryAnterior>=0 && novos>ST._qtdDeliveryAnterior) {
+              dispararNotificacaoLocal('🛵 Novo Pedido de Delivery!', 'Acesse o aplicativo para ver os detalhes da entrega.');
+          }
           ST._qtdDeliveryAnterior=novos;
           if(ST.abaAtiva==='abaDelivery') renderDelivery();
        }).catch(function(){});
@@ -922,6 +941,16 @@ function iniciarPolling(){
     api('GET', L('/polling'))
       .then(function(res){
         if(!ST.dados) return;
+        
+        var novosDel = (res.deliveryAtivo||[]).filter(function(p){ return (p.Status||'').toString().toUpperCase()==='NOVO'; }).length;
+        var novosBal = (res.pedidosDia?.pedidos||[]).filter(function(p){ return (p.Status||'').toString().toUpperCase()==='NOVO' && p.Origem === 'ONLINE'; }).length;
+        var totalNovos = novosDel + novosBal;
+        
+        if(ST._qtdDeliveryAnterior >= 0 && totalNovos > ST._qtdDeliveryAnterior) {
+            dispararNotificacaoLocal('🔔 Novo Pedido Recebido!', 'Verifique o painel para iniciar o preparo.');
+        }
+        ST._qtdDeliveryAnterior = totalNovos;
+
         ST.dados.pedidosDia    = res.pedidosDia;
         ST.dados.deliveryAtivo = res.deliveryAtivo;
         if(ST.abaAtiva==='abaPedidos')  renderPedidosDia();
