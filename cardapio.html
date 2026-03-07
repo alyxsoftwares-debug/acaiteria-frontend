@@ -1201,11 +1201,12 @@
   function renderizarEtapa1() {
     document.getElementById('tituloCheckout').innerText    = 'Seu Pedido';
     document.getElementById('subtituloCheckout').innerText = carrinho.itens.length + ' item(ns)';
-    document.getElementById('btnAcaoCheckout').innerHTML =
-      'Informar Dados <i class="fa-solid fa-arrow-right ml-1"></i>';
-    document.getElementById('btnAcaoCheckout').className =
-      'w-full btn-primary text-white font-black py-4 rounded-2xl ' +
-      'flex items-center justify-center gap-2 text-sm';
+    
+    var btnAcao = document.getElementById('btnAcaoCheckout');
+    btnAcao.disabled = false;
+    btnAcao.classList.remove('hidden');
+    btnAcao.innerHTML = 'Informar Dados <i class="fa-solid fa-arrow-right ml-1"></i>';
+    btnAcao.className = 'w-full btn-primary text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-sm';
 
     var html = '<div class="space-y-3 fade-in">' +
       carrinho.itens.map(function (it) {
