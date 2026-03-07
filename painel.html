@@ -852,13 +852,16 @@ function carregarDados(){
       if(err.message && err.message.indexOf('403') > -1) {
          var fallback = {};
          var reqs = [
-             api('GET', L('/dados-config')).then(function(d){ fallback.configuracoes = d.configuracoes; }).catch(function(){}),
+             // Busca as configurações e a logo na rota pública para não dar erro no Entregador
+             api('GET', L('/cardapio')).then(function(d){ 
+                 fallback.configuracoes = d.configuracoes || {}; 
+                 fallback.itensFixos = Array.isArray(d) ? d : (d.prontos || []);
+             }).catch(function(){}),
              api('GET', L('/delivery-ativo')).then(function(d){ fallback.deliveryAtivo = d; }).catch(function(){})
          ];
          // Se for Operador (bloqueado de dados financeiros, mas precisa do PDV)
          if (ST.usuario && ST.usuario.cargo !== 'Entregador') {
              reqs.push(api('GET', L('/pedidos/dia')).then(function(d){ fallback.pedidosDia = d; }).catch(function(){}));
-             reqs.push(api('GET', L('/cardapio')).then(function(d){ fallback.itensFixos = d; }).catch(function(){}));
              reqs.push(api('GET', L('/dados-monte-acai')).then(function(d){
                  fallback.acaiModelos = d.acaiModelos; fallback.acaiCategorias = d.acaiCategorias; fallback.acaiIngredientes = d.acaiIngredientes;
              }).catch(function(){}));
@@ -1092,7 +1095,7 @@ function recarregarItens(){
   api('GET', L('/cardapio'))
     .then(function(novos){
       if(!ST.dados) ST.dados={};
-      ST.dados.itensFixos = novos || [];
+      ST.dados.itensFixos = Array.isArray(novos) ? novos : (novos.prontos || []);
       renderSecaoItens();
     })
     .catch(function(){ toast('Erro ao recarregar Itens','error'); });
@@ -2505,7 +2508,9 @@ function recarregarDadosEAtualizar(tbodyId,renderFn,cacheKey){
   if(!endpoint){ return; }
   api('GET', L(endpoint))
     .then(function(novos){
-      if(ST.dados&&cacheKey) ST.dados[cacheKey]=novos;
+      if(ST.dados&&cacheKey) {
+        ST.dados[cacheKey] = (cacheKey === 'itensFixos' && !Array.isArray(novos)) ? (novos.prontos || []) : novos;
+      }
       var tbody=document.getElementById(tbodyId);
       if(tbody&&renderFn) tbody.innerHTML=renderFn();
     })
