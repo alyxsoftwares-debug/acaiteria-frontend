@@ -1713,15 +1713,20 @@
     api('GET', L('/pedidos/acompanhamento?q=') + encodeURIComponent(q))
       .then(function(data){
         renderRastreio(data);
-        // Auto-atualiza a cada 30s enquanto o pedido não estiver finalizado
-        if(data && !data.erro && _STATUS_FINAIS.indexOf(data.Status||'')<0){
+        
+        var pedidos = Array.isArray(data) ? data : (data && !data.erro ? [data] : []);
+        var todosFinalizados = pedidos.length > 0 && pedidos.every(function(p) { return _STATUS_FINAIS.indexOf(p.Status||'') >= 0; });
+        
+        if(pedidos.length > 0 && !todosFinalizados){
           _rastreioTimer=setInterval(function(){
             var modal=document.getElementById('modalRastreio');
             if(!modal||modal.classList.contains('hidden')){ clearInterval(_rastreioTimer); _rastreioTimer=null; return; }
             api('GET', L('/pedidos/acompanhamento?q=') + encodeURIComponent(_rastreioQuery))
               .then(function(d){
                 renderRastreio(d);
-                if(d && !d.erro && _STATUS_FINAIS.indexOf(d.Status||'')>=0){
+                var peds = Array.isArray(d) ? d : (d && !d.erro ? [d] : []);
+                var allFin = peds.length > 0 && peds.every(function(p) { return _STATUS_FINAIS.indexOf(p.Status||'') >= 0; });
+                if(allFin){
                   clearInterval(_rastreioTimer); _rastreioTimer=null;
                 }
               })
@@ -1739,86 +1744,110 @@
 
   function renderRastreio(data) {
     var res = document.getElementById('resultadoRastreio');
-    if (!data || data.erro) {
+    var pedidos = Array.isArray(data) ? data : (data && !data.erro ? [data] : []);
+
+    if (!pedidos.length) {
+      var msgErro = data && data.erro ? data.erro : 'Pedido não encontrado.';
       res.innerHTML = '<div class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center">' +
         '<i class="fa-solid fa-magnifying-glass text-gray-300 text-3xl mb-3 block"></i>' +
-        '<p class="text-gray-500 font-bold text-sm">' + esc(data ? data.erro : 'Pedido não encontrado.') + '</p>' +
+        '<p class="text-gray-500 font-bold text-sm">' + esc(msgErro) + '</p>' +
         '<p class="text-gray-400 text-xs mt-1 font-medium">Verifique o número e tente novamente.</p></div>';
       return;
     }
 
-    // Timeline por tipo de pedido
-    var passos = data.Origem === 'BALCAO'
-      ? [
-          { s: 'NOVO',       icon: 'fa-bell',        label: 'Recebido'   },
-          { s: 'PREPARANDO', icon: 'fa-fire-burner',  label: 'Preparando' },
-          { s: 'PRONTO',     icon: 'fa-box-open',     label: 'Pronto'     },
-          { s: 'ENTREGUE',   icon: 'fa-check-circle', label: 'Entregue'   }
-        ]
-      : [
-          { s: 'NOVO',        icon: 'fa-bell',           label: 'Recebido'    },
-          { s: 'EM_MONTAGEM', icon: 'fa-blender',        label: 'Montando'    },
-          { s: 'A_CAMINHO',   icon: 'fa-motorcycle',     label: 'A caminho'   },
-          { s: 'ENTREGUE',    icon: 'fa-check-circle',   label: 'Entregue'    }
-        ];
+    var htmlCompleto = '';
 
-    var ordem = ['NOVO','PREPARANDO','PRONTO','ENTREGUE','EM_MONTAGEM','A_CAMINHO','CANCELADO'];
-    var statusAtual = data.Status;
-    var iAtual = passos.findIndex ? passos.findIndex(function(p){ return p.s === statusAtual; })
-                                  : (function(){ for(var x=0;x<passos.length;x++) if(passos[x].s===statusAtual) return x; return -1; })();
+    pedidos.forEach(function(p, index) {
+        // Checa se é Retirada e ajusta
+        var isRetirada = p.Origem === 'BALCAO' || p.endereco === 'Retirada na loja';
+        
+        var passos = isRetirada
+          ? [
+              { s: 'NOVO',       icon: 'fa-bell',        label: 'Recebido'   },
+              { s: 'PREPARANDO', icon: 'fa-fire-burner',  label: 'Preparando' },
+              { s: 'PRONTO',     icon: 'fa-box-open',     label: 'Pronto'     },
+              { s: 'ENTREGUE',   icon: 'fa-check-circle', label: 'Entregue'   }
+            ]
+          : [
+              { s: 'NOVO',        icon: 'fa-bell',           label: 'Recebido'    },
+              { s: 'EM_MONTAGEM', icon: 'fa-blender',        label: 'Montando'    },
+              { s: 'A_CAMINHO',   icon: 'fa-motorcycle',     label: 'A caminho'   },
+              { s: 'ENTREGUE',    icon: 'fa-check-circle',   label: 'Entregue'    }
+            ];
 
-    var isCancelado = statusAtual === 'CANCELADO';
+        var statusAtual = p.Status;
+        var iAtual = -1;
+        for(var x=0;x<passos.length;x++){
+           if(passos[x].s===statusAtual) { iAtual = x; break; }
+        }
+        if(iAtual === -1) {
+           if(statusAtual === 'PREPARANDO' && !isRetirada) iAtual = 1;
+           if(statusAtual === 'EM_MONTAGEM' && isRetirada) iAtual = 1;
+        }
 
-    var timelineHTML = isCancelado
-      ? '<div class="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl p-4 mb-4">' +
-        '<div class="w-10 h-10 bg-red-100 rounded-2xl flex items-center justify-center flex-shrink-0">' +
-        '<i class="fa-solid fa-ban text-red-500"></i></div>' +
-        '<div><p class="font-black text-red-700">Pedido Cancelado</p>' +
-        '<p class="text-xs text-red-400 font-medium">Entre em contato com a loja para mais informações.</p></div></div>'
-      : '<div class="flex items-center justify-between mb-5 relative">' +
-        '<div class="absolute top-5 left-5 right-5 h-0.5 bg-gray-100 z-0"></div>' +
-        passos.map(function(p, idx) {
-          var feito    = idx <= iAtual;
-          var atual    = idx === iAtual;
-          var bgC      = feito ? 'bg-purple-600' : 'bg-gray-100';
-          var textC    = feito ? 'text-white' : 'text-gray-300';
-          var labelC   = atual ? 'text-purple-600 font-black' : (feito ? 'text-gray-700 font-bold' : 'text-gray-300 font-medium');
-          var ring     = atual ? ' ring-4 ring-purple-200' : '';
-          return '<div class="flex flex-col items-center gap-1.5 z-10 flex-1">' +
-            '<div class="w-10 h-10 ' + bgC + ring + ' rounded-2xl flex items-center justify-center">' +
-            '<i class="fa-solid ' + p.icon + ' text-sm ' + textC + '"></i></div>' +
-            '<span class="text-[9px] ' + labelC + ' text-center leading-tight">' + p.label + '</span></div>';
-        }).join('') + '</div>';
+        var isCancelado = statusAtual === 'CANCELADO';
 
-    // Card do pedido
-    var entregadorHTML = (data.Origem !== 'BALCAO' && data.Entregador_Nome)
-      ? '<div class="flex items-center gap-2 mt-3 bg-blue-50 border border-blue-100 rounded-xl p-2.5">' +
-        '<i class="fa-solid fa-motorcycle text-blue-500 text-sm flex-shrink-0"></i>' +
-        '<span class="text-xs font-bold text-blue-700">Entregador: ' + esc(data.Entregador_Nome) + '</span></div>'
-      : '';
+        var timelineHTML = isCancelado
+          ? '<div class="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl p-4 mb-4">' +
+            '<div class="w-10 h-10 bg-red-100 rounded-2xl flex items-center justify-center flex-shrink-0">' +
+            '<i class="fa-solid fa-ban text-red-500"></i></div>' +
+            '<div><p class="font-black text-red-700">Pedido Cancelado</p>' +
+            '<p class="text-xs text-red-400 font-medium">Entre em contato com a loja para mais informações.</p></div></div>'
+          : '<div class="flex items-center justify-between mb-5 relative">' +
+            '<div class="absolute top-5 left-5 right-5 h-0.5 bg-gray-100 z-0"></div>' +
+            passos.map(function(passo, idx) {
+              var feito    = idx <= iAtual;
+              var atual    = idx === iAtual;
+              var bgC      = feito ? 'bg-purple-600' : 'bg-gray-100';
+              var textC    = feito ? 'text-white' : 'text-gray-300';
+              var labelC   = atual ? 'text-purple-600 font-black' : (feito ? 'text-gray-700 font-bold' : 'text-gray-300 font-medium');
+              var ring     = atual ? ' ring-4 ring-purple-200' : '';
+              return '<div class="flex flex-col items-center gap-1.5 z-10 flex-1">' +
+                '<div class="w-10 h-10 ' + bgC + ring + ' rounded-2xl flex items-center justify-center">' +
+                '<i class="fa-solid ' + passo.icon + ' text-sm ' + textC + '"></i></div>' +
+                '<span class="text-[9px] ' + labelC + ' text-center leading-tight">' + passo.label + '</span></div>';
+            }).join('') + '</div>';
 
-    var itensHTML = data.itensResumo
-      ? '<div class="mt-4 bg-gray-50 rounded-2xl p-3">' +
-        '<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Itens do pedido</p>' +
-        data.itensResumo.split('\n').filter(Boolean).map(function(l){
-          return '<p class="text-xs text-gray-600 font-medium py-0.5 border-b border-gray-100 last:border-0">' + esc(l) + '</p>';
-        }).join('') + '</div>'
-      : '';
+        // Card do pedido
+        var entregadorHTML = (!isRetirada && p.Entregador_Nome)
+          ? '<div class="flex items-center gap-2 mt-3 bg-blue-50 border border-blue-100 rounded-xl p-2.5">' +
+            '<i class="fa-solid fa-motorcycle text-blue-500 text-sm flex-shrink-0"></i>' +
+            '<span class="text-xs font-bold text-blue-700">Entregador: ' + esc(p.Entregador_Nome) + '</span></div>'
+          : '';
+          
+        var retiradaHTML = (isRetirada && p.Origem !== 'BALCAO') 
+          ? '<div class="flex items-center gap-2 mt-3 bg-purple-50 border border-purple-100 rounded-xl p-2.5">' +
+            '<i class="fa-solid fa-store text-purple-500 text-sm flex-shrink-0"></i>' +
+            '<span class="text-xs font-bold text-purple-700">Retirada na Loja</span></div>' 
+          : '';
 
-    res.innerHTML = '<div class="space-y-4 fade-in">' +
-      timelineHTML +
-      '<div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">' +
-      '<div class="flex justify-between items-start mb-1">' +
-      '<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">#' + esc(data.ID_Venda) + '</span>' +
-      '<span class="text-[10px] font-bold text-gray-400">' + esc(data.Data_Hora) + '</span>' +
-      '</div>' +
-      (data.nomeCliente ? '<p class="font-black text-gray-800 text-sm">' + esc(data.nomeCliente) + '</p>' : '') +
-      '<p class="text-xs text-gray-500 font-medium mt-0.5">' + esc(data.Origem) + ' · ' +
-      '<span class="font-black text-green-600">R$ ' + parseFloat(data.Total_Final||0).toFixed(2).replace('.',',') + '</span></p>' +
-      entregadorHTML + itensHTML + '</div>' +
-      '</div>';
+        var itensHTML = p.itensResumo
+          ? '<div class="mt-4 bg-gray-50 rounded-2xl p-3">' +
+            '<p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Itens do pedido</p>' +
+            p.itensResumo.split('\n').filter(Boolean).map(function(l){
+              return '<p class="text-xs text-gray-600 font-medium py-0.5 border-b border-gray-100 last:border-0">' + esc(l) + '</p>';
+            }).join('') + '</div>'
+          : '';
+
+        // Divisor se for mais de um
+        var marginT = index > 0 ? 'mt-8 pt-8 border-t-2 border-dashed border-gray-200' : '';
+
+        htmlCompleto += '<div class="fade-in ' + marginT + '">' +
+          timelineHTML +
+          '<div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">' +
+          '<div class="flex justify-between items-start mb-1">' +
+          '<span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">#' + esc(p.ID_Venda) + '</span>' +
+          '<span class="text-[10px] font-bold text-gray-400">' + esc(p.Data_Hora) + '</span>' +
+          '</div>' +
+          (p.nomeCliente ? '<p class="font-black text-gray-800 text-sm">' + esc(p.nomeCliente) + '</p>' : '') +
+          '<p class="text-xs text-gray-500 font-medium mt-0.5">' + esc(p.Origem) + ' · ' +
+          '<span class="font-black text-green-600">R$ ' + parseFloat(p.Total_Final||0).toFixed(2).replace('.',',') + '</span></p>' +
+          entregadorHTML + retiradaHTML + itensHTML + '</div>' +
+          '</div>';
+    });
+
+    res.innerHTML = '<div class="space-y-4">' + htmlCompleto + '</div>';
   }
-  // ──────────────────────────────────────────────────────────
 
   // Injeta redes sociais e endereço no footer
   function _renderizarFooterSocial(cfg) {

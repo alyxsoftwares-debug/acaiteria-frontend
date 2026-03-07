@@ -17,11 +17,12 @@
       appId: "c7565fa8-cd8c-4264-85b4-1a9d9cf150af",
     });
     
-    // Associa o celular do entregador à loja para ele não receber notificações de outras lojas
+    // Associa o celular do entregador à loja e informa o cargo para isolar notificações
     try {
       var s = JSON.parse(sessionStorage.getItem('pdacai_user') || '{}');
       if (s.loja_id) {
         OneSignal.User.addTag("loja_id", s.loja_id);
+        OneSignal.User.addTag("cargo", s.cargo || 'Operador');
       }
     } catch(e) {}
   });
@@ -937,7 +938,15 @@ function iniciarPolling(){
        api('GET', L('/delivery-ativo')).then(function(res){
           if(!ST.dados) return;
           ST.dados.deliveryAtivo = res;
-          var novos=(res||[]).filter(function(p){ return (p.Status||'').toString().toUpperCase()==='NOVO'; }).length;
+          var novos=(res||[]).filter(function(p){ 
+              if ((p.Status||'').toString().toUpperCase() !== 'NOVO') return false;
+              // Se for Retirada, ignora e não toca o bip no celular do motoboy
+              try {
+                  var cli = typeof p.Cliente_Info === 'string' ? JSON.parse(p.Cliente_Info) : (p.Cliente_Info||{});
+                  if (cli.endereco === 'Retirada na loja') return false;
+              } catch(e) {}
+              return true;
+          }).length;
           if(ST._qtdDeliveryAnterior>=0 && novos>ST._qtdDeliveryAnterior) {
               dispararNotificacaoLocal('🛵 Novo Pedido de Delivery!', 'Acesse o aplicativo para ver os detalhes da entrega.');
           }
@@ -2166,7 +2175,8 @@ function pegarDelivery(idVenda){
       if(res.sucesso){
         toast('Pedido atribuído a você!','success');
         recarregarDelivery();
-        if(ST.dados && ST.dados.configuracoes && ST.dados.configuracoes.AutoImprimir_Delivery === 'SIM') {
+        // Bloqueia a impressão se for Entregador, evitando o erro de "null is not an object" pelo celular
+        if(ST.usuario && ST.usuario.cargo !== 'Entregador' && ST.dados && ST.dados.configuracoes && ST.dados.configuracoes.AutoImprimir_Delivery === 'SIM') {
             var pedPrint = (ST.dados.deliveryAtivo||[]).find(function(p){ return p.ID_Venda === idVenda; });
             if(pedPrint) imprimirCupom(pedPrint);
         }
