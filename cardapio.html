@@ -234,7 +234,7 @@
 
       <!-- Banner Monte Açaí -->
       <div id="areaInfoEntrega" class="hidden mb-6 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-center">
-        <div id="boxTempoEntrega" class="flex items-center gap-3 hidden">
+        <div id="boxTempoEntrega" class="items-center gap-3 hidden">
           <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500 flex-shrink-0">
             <i class="fa-solid fa-motorcycle"></i>
           </div>
@@ -244,7 +244,7 @@
           </div>
         </div>
         <div class="flex items-center gap-2 w-full sm:w-auto ml-auto">
-          <input list="listaBairrosTaxa" id="calcBairroInput" class="campo-texto py-2 text-xs flex-1 sm:w-56" placeholder="🔍 Buscar taxa de entrega..." onchange="calcularTaxaCardapio()" oninput="calcularTaxaCardapio()">
+          <input list="listaBairrosTaxa" id="calcBairroInput" class="campo-texto py-2 text-xs flex-1 sm:w-full sm:max-w-[220px]" placeholder="🔍 Buscar taxa..." onchange="calcularTaxaCardapio()" oninput="calcularTaxaCardapio()">
           <datalist id="listaBairrosTaxa"></datalist>
           <div id="calcTaxaResult" class="font-black text-green-600 text-sm whitespace-nowrap hidden"></div>
         </div>
@@ -660,13 +660,21 @@
         dadosBase.configuracoes = p.configuracoes || {};
 
         // Info de Entrega e Calculadora
-        var tempoCfg = (dadosBase.configuracoes && dadosBase.configuracoes.Tempo_Entrega) ? String(dadosBase.configuracoes.Tempo_Entrega).trim() : "";
-        if (tempoCfg !== "") {
-          document.getElementById('txtTempoEntrega').innerText = tempoCfg;
-          document.getElementById('boxTempoEntrega').classList.remove('hidden');
-          document.getElementById('areaInfoEntrega').classList.remove('hidden');
+        var c = dadosBase.configuracoes || {};
+        var tempoCfg = (c.Tempo_Entrega || c.tempo_entrega || c.tempoEntrega || "").toString().trim();
+        
+        var areaInfo = document.getElementById('areaInfoEntrega');
+        var boxTempo = document.getElementById('boxTempoEntrega');
+        
+        if (tempoCfg && tempoCfg !== "undefined") {
+          if (document.getElementById('txtTempoEntrega')) document.getElementById('txtTempoEntrega').innerText = tempoCfg;
+          if (boxTempo) {
+            boxTempo.classList.remove('hidden');
+            boxTempo.style.display = 'flex'; 
+          }
+          if (areaInfo) areaInfo.classList.remove('hidden');
         } else if (dadosBase.bairros && dadosBase.bairros.length > 0) {
-          document.getElementById('areaInfoEntrega').classList.remove('hidden');
+          if (areaInfo) areaInfo.classList.remove('hidden');
         }
         
         var datalist = document.getElementById('listaBairrosTaxa');
@@ -945,25 +953,52 @@
       totalBox.innerText = fmtTot;
     }
 
-    // Lógica da barra de frete grátis
-    var freteGratisMeta = parseFloat((dadosBase.configuracoes && dadosBase.configuracoes.Frete_Gratis) || 0);
+    // Lógica da barra de frete grátis 
+    var c = dadosBase.configuracoes || {};
+    var freteGratisMeta = parseFloat(c.Frete_Gratis || c.frete_gratis || c.freteGratis || 0);
+    
+    // 1. Sidebar Desktop
     var containerProgresso = document.getElementById('progressoFreteContainer');
     if (containerProgresso && freteGratisMeta > 0) {
       containerProgresso.classList.remove('hidden');
       var falta = freteGratisMeta - total;
       var pct = Math.min(100, (total / freteGratisMeta) * 100);
       document.getElementById('progressoFreteBarra').style.width = pct + '%';
-      
       var txtEl = document.getElementById('progressoFreteTexto');
       if (falta > 0) {
         txtEl.innerHTML = 'Falta <strong>' + fmt(falta) + '</strong> para <strong>Entrega Grátis!</strong>';
-        document.getElementById('progressoFreteBarra').classList.replace('bg-green-500', 'bg-purple-600');
+        document.getElementById('progressoFreteBarra').className = 'h-full transition-all duration-300 bg-purple-600';
       } else {
         txtEl.innerHTML = '🎉 Você ganhou <strong>Entrega Grátis!</strong>';
-        document.getElementById('progressoFreteBarra').classList.replace('bg-purple-600', 'bg-green-500');
+        document.getElementById('progressoFreteBarra').className = 'h-full transition-all duration-300 bg-green-500';
       }
     } else if (containerProgresso) {
       containerProgresso.classList.add('hidden');
+    }
+
+    // 2. Mobile Flutuante (Estilo iFood)
+    var btnAcao = document.getElementById('btnAcaoCheckout');
+    if (btnAcao) {
+        var barraMobile = document.getElementById('progressoFreteMobileFloat');
+        if (!barraMobile && freteGratisMeta > 0) {
+            barraMobile = document.createElement('div');
+            barraMobile.id = 'progressoFreteMobileFloat';
+            btnAcao.appendChild(barraMobile);
+            btnAcao.classList.add('relative'); 
+        }
+        if (barraMobile) {
+            if (freteGratisMeta > 0 && total > 0) {
+                barraMobile.style.display = 'block';
+                var faltaMobile = freteGratisMeta - total;
+                var pctMobile = Math.min(100, (total / freteGratisMeta) * 100);
+                barraMobile.className = 'absolute -top-8 left-0 w-full rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.1)] overflow-hidden z-50 text-center py-1.5 text-[11px] font-bold ' + (faltaMobile > 0 ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800');
+                var txtMsg = faltaMobile > 0 ? 'Falta <strong>' + fmt(faltaMobile) + '</strong> para <strong>Entrega Grátis!</strong>' : '🎉 Você ganhou <strong>Entrega Grátis!</strong>';
+                var corBarra = faltaMobile > 0 ? 'bg-purple-600' : 'bg-green-500';
+                barraMobile.innerHTML = txtMsg + '<div class="absolute bottom-0 left-0 w-full h-1 bg-white/50"><div class="h-1 ' + corBarra + ' transition-all duration-300" style="width:' + pctMobile + '%"></div></div>';
+            } else {
+                barraMobile.style.display = 'none';
+            }
+        }
     }
 
     renderizarCarrinhoSidebar();
