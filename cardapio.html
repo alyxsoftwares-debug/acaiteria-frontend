@@ -660,72 +660,33 @@
         dadosBase.bairros       = p.bairros      || [];
         dadosBase.configuracoes = p.configuracoes || {};
 
-        var totalBox = document.getElementById('totalSidebar');
-    if (totalBox) {
-      totalBox.innerText = fmtTot;
-    }
-
-    // Lógica da barra de frete grátis 
-    var c = dadosBase.configuracoes || {};
-    var freteGratisMeta = parseFloat(c.Frete_Gratis || c.frete_gratis || c.freteGratis || 0);
-    
-    // 1. Sidebar Desktop
-    var containerProgresso = document.getElementById('progressoFreteContainer');
-    if (containerProgresso && freteGratisMeta > 0 && total > 0) {
-      containerProgresso.classList.remove('hidden');
-      var falta = freteGratisMeta - total;
-      var pct = Math.min(100, (total / freteGratisMeta) * 100);
-      document.getElementById('progressoFreteBarra').style.width = pct + '%';
-      var txtEl = document.getElementById('progressoFreteTexto');
-      if (falta > 0) {
-        txtEl.innerHTML = 'Falta <strong>' + fmt(falta) + '</strong> para <strong>Entrega Grátis!</strong>';
-        document.getElementById('progressoFreteBarra').className = 'h-full transition-all duration-300 bg-purple-600';
-      } else {
-        txtEl.innerHTML = '🎉 Você ganhou <strong>Entrega Grátis!</strong>';
-        document.getElementById('progressoFreteBarra').className = 'h-full transition-all duration-300 bg-green-500';
-      }
-    } else if (containerProgresso) {
-      containerProgresso.classList.add('hidden');
-    }
-
-    // 2. Mobile Flutuante (Estilo iFood - grudado na barra do carrinho mobile)
-    var barraMobileContainer = document.getElementById('barraCarrinhoMobile');
-    if (barraMobileContainer) {
-        var barraMobile = document.getElementById('progressoFreteMobileFloat');
-        if (!barraMobile && freteGratisMeta > 0) {
-            barraMobile = document.createElement('div');
-            barraMobile.id = 'progressoFreteMobileFloat';
-            barraMobileContainer.insertBefore(barraMobile, barraMobileContainer.firstChild);
-        }
-        if (barraMobile) {
-            if (freteGratisMeta > 0 && total > 0) {
-                barraMobile.style.display = 'block';
-                var faltaMobile = freteGratisMeta - total;
-                var pctMobile = Math.min(100, (total / freteGratisMeta) * 100);
-                
-                barraMobile.className = 'absolute -top-7 left-0 w-full shadow-[0_-5px_15px_rgba(0,0,0,0.1)] overflow-hidden z-50 text-center py-1.5 text-[10px] font-bold rounded-t-xl ' + (faltaMobile > 0 ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800');
-                
-                var txtMsg = faltaMobile > 0 ? 'Falta <strong>' + fmt(faltaMobile) + '</strong> para <strong>Entrega Grátis!</strong>' : '🎉 Você ganhou <strong>Entrega Grátis!</strong>';
-                var corBarra = faltaMobile > 0 ? 'bg-purple-600' : 'bg-green-500';
-                
-                barraMobile.innerHTML = txtMsg + '<div class="absolute bottom-0 left-0 w-full h-1 bg-white/50"><div class="h-1 ' + corBarra + ' transition-all duration-300" style="width:' + pctMobile + '%"></div></div>';
-            } else {
-                barraMobile.style.display = 'none';
-            }
-        }
-    }
-
-    renderizarCarrinhoSidebar();
+        // Info de Entrega e Calculadora
+        var c = dadosBase.configuracoes || {};
+        var tempoCfg = (c.Tempo_Entrega || c.tempo_entrega || c.tempoEntrega || "").toString().trim();
         
-        var datalist = document.getElementById('listaBairrosTaxa');
-        var calcInput = document.getElementById('calcBairroInput');
-        if (datalist && dadosBase.bairros.length > 0) {
-          datalist.innerHTML = dadosBase.bairros.map(function(b) {
-            return '<option value="' + esc(b.Nome_Bairro) + '"></option>';
+        var areaInfo = document.getElementById('areaInfoEntrega');
+        var boxTempo = document.getElementById('boxTempoEntrega');
+        var boxCalc = document.getElementById('boxCalculadoraTaxa');
+        
+        // Mostra o tempo se existir
+        if (tempoCfg && tempoCfg !== "undefined" && tempoCfg !== "") {
+          if (document.getElementById('txtTempoEntrega')) document.getElementById('txtTempoEntrega').innerText = tempoCfg;
+          if (boxTempo) {
+            boxTempo.classList.remove('hidden');
+            boxTempo.style.display = 'flex'; 
+          }
+          if (areaInfo) areaInfo.classList.remove('hidden');
+        }
+        
+        // Popula os bairros
+        var calcSel = document.getElementById('calcBairroSelect');
+        if (calcSel && dadosBase.bairros && dadosBase.bairros.length > 0) {
+          calcSel.innerHTML = '<option value="">Calcular taxa de entrega...</option>' + dadosBase.bairros.map(function(b) {
+            return '<option value="' + b['Taxa_R$'] + '">' + esc(b.Nome_Bairro) + '</option>';
           }).join('');
-        } else if (calcInput) {
-          calcInput.placeholder = 'Sem bairros disponíveis';
-          calcInput.disabled = true;
+          if (areaInfo) areaInfo.classList.remove('hidden');
+        } else if (calcSel) {
+          if(boxCalc) boxCalc.classList.add('hidden'); // esconde calculadora se não tiver bairro
         }
 
         // Injeta redes sociais e endereço no footer
