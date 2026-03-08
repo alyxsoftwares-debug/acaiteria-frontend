@@ -2116,12 +2116,24 @@ function renderDelivery(){
     return;
   }
 
-  var ordenados=pedidosVisiveis.slice().sort(function(a,b){
-    var ordem={NOVO:0,EM_MONTAGEM:1,A_CAMINHO:2};
-    var oa=ordem[(a.Status||'').toUpperCase()]||3;
-    var ob=ordem[(b.Status||'').toUpperCase()]||3;
-    function _sk(s){ var p=(s||'').split(' ');var d=p[0].split('/');return (d[2]||'')+'/'+(d[1]||'')+'/'+(d[0]||'')+' '+(p[1]||''); }
-    return oa-ob||_sk(b.Data_Hora||'').localeCompare(_sk(a.Data_Hora||''));
+  var ordenados = pedidosVisiveis.slice().sort(function(a,b){
+    var ordem = { NOVO:0, PREPARANDO:1, EM_MONTAGEM:1, A_CAMINHO:2, PRONTO:2 };
+    var oa = ordem[(a.Status||'').toUpperCase()] || 3;
+    var ob = ordem[(b.Status||'').toUpperCase()] || 3;
+    
+    // Leitor absoluto de datas (garante que a hora maior venha primeiro)
+    function parseDt(s) {
+       if(!s) return 0;
+       var p = s.split(' ');
+       if(p.length < 2) return 0;
+       var d = p[0].split('/');
+       var t = p[1].split(':');
+       return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]||0).getTime();
+    }
+    
+    // Organiza por Status primeiro; se for o mesmo Status, joga o MAIS NOVO pra esquerda/topo!
+    if (oa !== ob) return oa - ob;
+    return parseDt(b.Data_Hora) - parseDt(a.Data_Hora);
   });
 
   lista.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">'+
@@ -2311,12 +2323,24 @@ function renderRetirada(){
     return;
   }
 
-  var ordenados=pedidos.slice().sort(function(a,b){
-    var ordem={NOVO:0,PREPARANDO:1,EM_MONTAGEM:1,PRONTO:2};
-    var oa=ordem[(a.Status||'').toUpperCase()]||3;
-    var ob=ordem[(b.Status||'').toUpperCase()]||3;
-    function _sk(s){ var p=(s||'').split(' ');var d=p[0].split('/');return (d[2]||'')+'/'+(d[1]||'')+'/'+(d[0]||'')+' '+(p[1]||''); }
-    return oa-ob||_sk(b.Data_Hora||'').localeCompare(_sk(a.Data_Hora||''));
+  var ordenados = pedidos.slice().sort(function(a,b){
+    var ordem = { NOVO:0, PREPARANDO:1, EM_MONTAGEM:1, PRONTO:2 };
+    var oa = ordem[(a.Status||'').toUpperCase()] || 3;
+    var ob = ordem[(b.Status||'').toUpperCase()] || 3;
+    
+    // Leitor absoluto de datas (garante que a hora maior e mais recente venha primeiro)
+    function parseDt(s) {
+       if(!s) return 0;
+       var p = s.split(' ');
+       if(p.length < 2) return 0;
+       var d = p[0].split('/');
+       var t = p[1].split(':');
+       return new Date(d[2], d[1]-1, d[0], t[0], t[1], t[2]||0).getTime();
+    }
+    
+    // Organiza por Status primeiro; se for o mesmo Status, joga o MAIS NOVO pra esquerda/topo!
+    if (oa !== ob) return oa - ob;
+    return parseDt(b.Data_Hora) - parseDt(a.Data_Hora);
   });
 
   lista.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">'+

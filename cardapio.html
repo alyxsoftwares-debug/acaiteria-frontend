@@ -1298,6 +1298,7 @@
     if (isEntrega) {
       html +=
         '<div><label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Bairro</label>' +
+        '<input type="text" id="iptBuscaBairro" placeholder="🔍 Digite para pesquisar seu bairro..." class="campo-texto mb-2" onkeyup="filtrarBairros(this.value)">' +
         '<select id="ck_bairro" onchange="selecionarBairro(this)" class="campo-select font-bold">' +
         '<option value="">Selecione seu bairro...</option>' + bairrosOpts + '</select></div>' +
         '<div><label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Endereço</label>' +
@@ -1696,6 +1697,17 @@
     document.body.style.overflow = '';
     if(_rastreioTimer){ clearInterval(_rastreioTimer); _rastreioTimer=null; }
   }
+  
+  // Função para pesquisar e ocultar bairros na lista
+  function filtrarBairros(termo) {
+    var t = termo.toLowerCase().trim();
+    var sel = document.getElementById('iptBairro');
+    if(!sel) return;
+    for(var i=1; i<sel.options.length; i++) {
+       var txt = sel.options[i].text.toLowerCase();
+       sel.options[i].style.display = txt.includes(t) ? '' : 'none';
+    }
+  }
 
   function consultarPedido() {
     var q   = document.getElementById('inpRastreio').value.trim();
@@ -1763,8 +1775,8 @@
         
         var passos = isRetirada
           ? [
-              { s: 'NOVO',       icon: 'fa-bell',        label: 'Recebido'   },
-              { s: 'PREPARANDO', icon: 'fa-fire-burner',  label: 'Preparando' },
+              { s: 'NOVO',       icon: 'fa-bell',         label: 'Recebido'   },
+              { s: 'PREPARANDO', icon: 'fa-blender',      label: 'Preparando' },
               { s: 'PRONTO',     icon: 'fa-box-open',     label: 'Pronto'     },
               { s: 'ENTREGUE',   icon: 'fa-check-circle', label: 'Entregue'   }
             ]
