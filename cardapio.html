@@ -660,11 +660,12 @@
         dadosBase.configuracoes = p.configuracoes || {};
 
         // Info de Entrega e Calculadora
-        if (dadosBase.configuracoes.Tempo_Entrega && dadosBase.configuracoes.Tempo_Entrega.trim() !== "") {
-          document.getElementById('txtTempoEntrega').innerText = dadosBase.configuracoes.Tempo_Entrega;
+        var tempoCfg = (dadosBase.configuracoes && dadosBase.configuracoes.Tempo_Entrega) ? String(dadosBase.configuracoes.Tempo_Entrega).trim() : "";
+        if (tempoCfg !== "") {
+          document.getElementById('txtTempoEntrega').innerText = tempoCfg;
           document.getElementById('boxTempoEntrega').classList.remove('hidden');
           document.getElementById('areaInfoEntrega').classList.remove('hidden');
-        } else if (dadosBase.bairros.length > 0) {
+        } else if (dadosBase.bairros && dadosBase.bairros.length > 0) {
           document.getElementById('areaInfoEntrega').classList.remove('hidden');
         }
         
