@@ -566,7 +566,7 @@
     try{ return new URLSearchParams(window.location.search).get('loja') || ''; }catch(e){ return ''; }
   })();
 
-  /** Monta o path multitenant */
+  /** Monta o path multitenante */
   function L(path){ return '/api/lojas/'+LOJA_ID+path; }
 
   /**
