@@ -681,7 +681,7 @@
         // Popula os bairros
         var calcSel = document.getElementById('calcBairroSelect');
         if (calcSel && dadosBase.bairros && dadosBase.bairros.length > 0) {
-          calcSel.innerHTML = '<option value="">Calcular entrega...</option>' + dadosBase.bairros.map(function(b) {
+          calcSel.innerHTML = '<option value="">Calcular taxa de entrega...</option>' + dadosBase.bairros.map(function(b) {
             return '<option value="' + b['Taxa_R$'] + '">' + esc(b.Nome_Bairro) + '</option>';
           }).join('');
           if (areaInfo) areaInfo.classList.remove('hidden');
@@ -1364,13 +1364,11 @@
     var semBairros = dadosBase.bairros.length === 0;
 
     var bairrosOpts = dadosBase.bairros.map(function (b) {
-      var id  = b.ID_Bairro || b.Nome_Bairro;
       var taxa = b['Taxa_R$'] || 0;
-      var sel = checkout.bairroId === id ? 'selected' : '';
-      return '<option value="' + esc(id) + '" data-taxa="' + taxa + '" ' +
-             'data-nome="' + esc(b.Nome_Bairro) + '" ' + sel + '>' +
-             esc(b.Nome_Bairro) + ' — ' + fmt(taxa) + '</option>';
+      return '<option value="' + esc(b.Nome_Bairro) + ' — ' + fmt(taxa) + '"></option>';
     }).join('');
+    
+    var valorAtualBairro = checkout.nomeBairro ? (esc(checkout.nomeBairro) + ' — ' + fmt(checkout.taxaEntrega)) : '';
 
     var html =
       '<div class="space-y-4 fade-in">' +
@@ -1418,9 +1416,9 @@
     if (isEntrega) {
       html +=
         '<div><label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Bairro</label>' +
-        '<input type="text" id="iptBuscaBairro" placeholder="🔍 Digite para pesquisar seu bairro..." class="campo-texto mb-2" onkeyup="filtrarBairros(this.value)">' +
-        '<select id="ck_bairro" onchange="selecionarBairro(this)" class="campo-select font-bold">' +
-        '<option value="">Selecione seu bairro...</option>' + bairrosOpts + '</select></div>' +
+        '<input type="text" list="listaBairrosCheckout" value="' + valorAtualBairro + '" placeholder="🔍 Digite para pesquisar seu bairro..." class="campo-texto font-bold mb-2" onchange="selecionarBairroUnificado(this)" oninput="selecionarBairroUnificado(this)">' +
+        '<datalist id="listaBairrosCheckout">' + bairrosOpts + '</datalist>' +
+        '<input type="hidden" id="ck_bairro" value="' + esc(checkout.bairroId) + '"></div>' +
         '<div><label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Endereço</label>' +
         '<input id="ck_end" type="text" value="' + esc(checkout.endereco) + '" ' +
         'placeholder="Rua, número, complemento" class="campo-texto"></div>';
@@ -1450,11 +1448,32 @@
     }
   }
 
-  function selecionarBairro(sel) {
-    var opt = sel.options[sel.selectedIndex];
-    checkout.bairroId    = sel.value;
-    checkout.nomeBairro  = opt.dataset.nome  || '';
-    checkout.taxaEntrega = parseFloat(opt.dataset.taxa || 0);
+  function selecionarBairroUnificado(inputEl) {
+    var val = inputEl.value;
+    var hiddenEl = document.getElementById('ck_bairro');
+    var encontrado = null;
+    
+    for (var i = 0; i < dadosBase.bairros.length; i++) {
+       var b = dadosBase.bairros[i];
+       var textoExibicao = b.Nome_Bairro + ' — ' + fmt(b['Taxa_R$'] || 0);
+       if (textoExibicao === val) {
+           encontrado = b;
+           break;
+       }
+    }
+    
+    if (encontrado) {
+       checkout.bairroId = encontrado.ID_Bairro || encontrado.Nome_Bairro;
+       checkout.nomeBairro = encontrado.Nome_Bairro;
+       checkout.taxaEntrega = parseFloat(encontrado['Taxa_R$'] || 0);
+       if (hiddenEl) hiddenEl.value = checkout.bairroId;
+    } else {
+       // Se o cliente apagar ou digitar um bairro que não existe, zera a seleção
+       checkout.bairroId = '';
+       checkout.nomeBairro = '';
+       checkout.taxaEntrega = 0;
+       if (hiddenEl) hiddenEl.value = '';
+    }
   }
 
   function aplicarCupom() {
