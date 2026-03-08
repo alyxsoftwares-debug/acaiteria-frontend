@@ -1175,6 +1175,7 @@
   function fecharCheckout() {
     document.getElementById('modalCheckout').classList.add('hidden');
     document.body.style.overflow = '';
+    if(window.pixInterval) clearInterval(window.pixInterval);
     // Garante que, se veio de mostrarSucesso, o checkout é reiniciado
     checkout.etapa = 1;
   }
@@ -1559,20 +1560,162 @@
       troco:     trocoFinal
     };
 
-    api('POST', L('/pedidos/online'), dadosPedido)
-    .then(function(res) {
-      var idVenda = (res && res.sucesso && res.id) ? res.id : 'LOCAL';
-      abrirWhatsApp(dadosPedido, idVenda);
-      mostrarSucesso();
-    })
-    .catch(function() {
-      // Falha de rede: abre WhatsApp na mesma e libera o botão
-      btn.disabled = false;
-      btn.innerHTML = 'Confirmar Pedido <i class="fa-solid fa-check ml-1"></i>';
-      abrirWhatsApp(dadosPedido, 'LOCAL');
-      mostrarSucesso();
-    });
+    if (checkout.pagamento === 'pix') {
+      // Tenta gerar o PIX Automático
+      api('POST', L('/pedidos/online-pix'), dadosPedido)
+      .then(function(res) {
+        if (res.sucesso && res.qrCodeBase64) {
+          mostrarTelaPix(res, dadosPedido);
+        } else {
+          // Fallback se PIX Automático estiver desligado no painel ou der erro
+          abrirWhatsApp(dadosPedido, (res && res.id) ? res.id : 'LOCAL');
+          mostrarSucesso();
+        }
+      })
+      .catch(function() {
+        btn.disabled = false;
+        btn.innerHTML = 'Confirmar Pedido <i class="fa-solid fa-check ml-1"></i>';
+        abrirWhatsApp(dadosPedido, 'LOCAL');
+        mostrarSucesso();
+      });
+    } else {
+      // Fluxo Normal (Cartão, Dinheiro)
+      api('POST', L('/pedidos/online'), dadosPedido)
+      .then(function(res) {
+        var idVenda = (res && res.sucesso && res.id) ? res.id : 'LOCAL';
+        abrirWhatsApp(dadosPedido, idVenda);
+        mostrarSucesso();
+      })
+      .catch(function() {
+        btn.disabled = false;
+        btn.innerHTML = 'Confirmar Pedido <i class="fa-solid fa-check ml-1"></i>';
+        abrirWhatsApp(dadosPedido, 'LOCAL');
+        mostrarSucesso();
+      });
+    }
   }
+
+  window.pixInterval = null;
+
+  function mostrarTelaPix(pixData, dadosPedido) {
+    carrinho.itens = [];
+    checkout.cupom = null;
+    atualizarUI_Carrinho();
+
+    var qrCodeImg = 'data:image/jpeg;base64,' + pixData.qrCodeBase64;
+    var copiaECola = pixData.pixCopiaECola;
+    var idVenda = pixData.id;
+    var idPagamento = pixData.idPagamento;
+
+    var html = 
+      '<div class="flex flex-col items-center justify-center py-6 fade-in text-center">' +
+        '<div class="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-3 shadow-inner">' +
+          '<i class="fa-brands fa-pix text-3xl text-purple-600"></i>' +
+        '</div>' +
+        '<h3 class="text-xl font-black text-gray-900 mb-1">Pague com PIX</h3>' +
+        '<p class="text-gray-500 text-xs font-medium mb-5 px-4">Abra o app do seu banco e escaneie o QR Code ou use o Copia e Cola.</p>' +
+        
+        '<div class="bg-white p-3 rounded-3xl shadow-lg border border-gray-100 mb-5 inline-block">' +
+          '<img src="' + qrCodeImg + '" class="w-48 h-48 rounded-xl object-contain">' +
+        '</div>' +
+        
+        '<div class="w-full max-w-sm bg-purple-50 p-4 rounded-2xl border border-purple-100 relative">' +
+           '<p class="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1.5 text-left">PIX Copia e Cola</p>' +
+           '<div class="flex items-center gap-2">' +
+              '<input type="text" readonly value="' + copiaECola + '" id="inpPixCopiaCola" class="campo-texto flex-1 text-[11px] bg-white border-purple-100 text-gray-500 font-mono" style="padding-right:45px;">' +
+              '<button id="btnCopiarPix" onclick="copiarPix()" class="absolute right-6 top-[33px] bg-white text-purple-600 hover:text-white hover:bg-purple-600 border border-purple-200 rounded-lg transition p-1.5 w-8 h-8 flex items-center justify-center shadow-sm">' +
+                '<i class="fa-regular fa-copy"></i>' +
+              '</button>' +
+           '</div>' +
+        '</div>' +
+        
+        '<div class="mt-6 flex flex-col items-center justify-center bg-gray-50 w-full rounded-2xl p-4">' +
+           '<i class="fa-solid fa-circle-notch fa-spin text-purple-500 text-2xl mb-2"></i>' +
+           '<p class="text-xs font-bold text-gray-600" id="statusPixTexto">Aguardando confirmação do banco...</p>' +
+        '</div>' +
+        
+        '<button onclick="abrirWhatsAppPix(\'' + idVenda + '\')" class="mt-6 text-[11px] text-gray-400 font-bold underline hover:text-gray-600 transition">' +
+           'Tive um problema / Enviar comprovante manual' +
+        '</button>' +
+      '</div>';
+
+    document.getElementById('corpoCheckout').innerHTML = html;
+    document.getElementById('btnAcaoCheckout').classList.add('hidden');
+    document.getElementById('btnVoltarCheckout').classList.add('hidden');
+
+    if(window.pixInterval) clearInterval(window.pixInterval);
+    
+    var tentativas = 0;
+    window.pixInterval = setInterval(function() {
+       tentativas++;
+       if (tentativas > 75) { 
+          clearInterval(window.pixInterval);
+          var stTexto = document.getElementById('statusPixTexto');
+          if(stTexto) {
+              stTexto.innerText = 'Tempo limite excedido. Tente novamente ou contate a loja.';
+              stTexto.className = 'text-xs font-bold text-red-500 mt-2';
+          }
+          return;
+       }
+       
+       api('POST', L('/pix/confirmar'), { idVenda: idVenda, idPagamento: idPagamento })
+       .then(function(res) {
+           if (res.status === 'approved') {
+               clearInterval(window.pixInterval);
+               mostrarSucessoPix(idVenda);
+           } else if (res.status === 'cancelled' || res.status === 'rejected') {
+               clearInterval(window.pixInterval);
+               var stTexto = document.getElementById('statusPixTexto');
+               if(stTexto) {
+                   stTexto.innerText = 'Pagamento recusado ou cancelado.';
+                   stTexto.className = 'text-xs font-bold text-red-500 mt-2';
+               }
+           }
+       }).catch(function(){});
+    }, 4000);
+  }
+
+  window.copiarPix = function() {
+    var inp = document.getElementById('inpPixCopiaCola');
+    var btn = document.getElementById('btnCopiarPix');
+    inp.select();
+    inp.setSelectionRange(0, 99999);
+    try {
+        document.execCommand("copy");
+        btn.innerHTML = '<i class="fa-solid fa-check text-green-500"></i>';
+        setTimeout(function() { btn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
+    } catch(e) {}
+  };
+
+  window.abrirWhatsAppPix = function(idVenda) {
+     if(window.pixInterval) clearInterval(window.pixInterval);
+     var numero = dadosBase.configuracoes.WhatsApp_Numero ? dadosBase.configuracoes.WhatsApp_Numero.toString().replace(/\D/g, '') : '';
+     if(!numero) { fecharCheckout(); return; }
+     var msg = "Olá, fiz o pedido *" + idVenda + "* pelo cardápio online e escolhi PIX, mas tive um problema e gostaria de enviar o comprovante manualmente.";
+     window.open('https://wa.me/55' + numero + '?text=' + encodeURIComponent(msg), '_blank');
+     fecharCheckout();
+  };
+
+  window.mostrarSucessoPix = function(idVenda) {
+     document.getElementById('corpoCheckout').innerHTML =
+       '<div class="flex flex-col items-center justify-center py-10 fade-in">' +
+       '<div class="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mb-5 ' +
+       'shadow-lg shadow-green-100 border-2 border-green-100">' +
+       '<i class="fa-solid fa-check text-4xl text-green-500"></i></div>' +
+       '<h3 class="text-2xl font-black text-gray-900 mb-2">Pagamento Aprovado!</h3>' +
+       '<p class="text-gray-400 text-sm font-medium text-center max-w-xs leading-relaxed">' +
+       'O seu PIX foi recebido com sucesso e o seu pedido já foi enviado para a cozinha!</p>' +
+       '<button onclick="fecharCheckout(); abrirRastreamentoPix(\'' + idVenda + '\')" ' +
+       'class="mt-8 btn-primary text-white font-black py-3.5 px-8 rounded-2xl text-sm ' +
+       'inline-flex items-center gap-2">' +
+       '<i class="fa-solid fa-location-arrow text-xs"></i>Acompanhar Pedido</button></div>';
+  };
+  
+  window.abrirRastreamentoPix = function(idVenda) {
+     abrirRastreamento();
+     document.getElementById('inpRastreio').value = idVenda;
+     setTimeout(consultarPedido, 500);
+  };
 
   function abrirWhatsApp(d, idVenda) {
     var wpp = dadosBase.configuracoes.WhatsApp_Numero;
