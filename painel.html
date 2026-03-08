@@ -5,6 +5,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <title>Painel — AlyxSoftwares</title>
+<link rel="apple-touch-icon" href="logo-alyx.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -947,8 +948,9 @@ function iniciarPolling(){
               } catch(e) {}
               return true;
           }).length;
+          
           if(ST._qtdDeliveryAnterior>=0 && novos>ST._qtdDeliveryAnterior) {
-              dispararNotificacaoLocal('🛵 Novo Pedido de Delivery!', 'Acesse o aplicativo para ver os detalhes da entrega.');
+              tocarSomPedido(); // Apenas toca o bip (A notificação visual vem do Servidor)
           }
           ST._qtdDeliveryAnterior=novos;
           if(ST.abaAtiva==='abaDelivery') renderDelivery();
@@ -966,7 +968,7 @@ function iniciarPolling(){
         var totalNovos = novosDel + novosBal;
         
         if(ST._qtdDeliveryAnterior >= 0 && totalNovos > ST._qtdDeliveryAnterior) {
-            dispararNotificacaoLocal('🔔 Novo Pedido Recebido!', 'Verifique o painel para iniciar o preparo.');
+            tocarSomPedido(); // Apenas toca o bip (A notificação visual vem do Servidor)
         }
         ST._qtdDeliveryAnterior = totalNovos;
 
