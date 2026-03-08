@@ -361,7 +361,7 @@
               AlyxSoftwares
             </span>
             <span class="text-gray-300 text-[10px]">·</span>
-            <a href="tel:+5584981282146"
+            <a href="tel:+5585921480429"
                class="text-[10px] font-black text-gray-400 hover:text-purple-600
                       transition-colors flex items-center gap-1">
               <i class="fa-solid fa-phone text-[8px]"></i>(84) 98128-2146
@@ -1566,10 +1566,15 @@
       .then(function(res) {
         if (res.sucesso && res.qrCodeBase64) {
           mostrarTelaPix(res, dadosPedido);
-        } else {
-          // Fallback se PIX Automático estiver desligado no painel ou der erro
-          abrirWhatsApp(dadosPedido, (res && res.id) ? res.id : 'LOCAL');
+        } else if (res.sucesso) {
+          // Se o PIX Automático estiver desligado, segue fluxo normal
+          abrirWhatsApp(dadosPedido, res.id);
           mostrarSucesso();
+        } else {
+          // Mostra o erro real na tela (ex: Token Inválido)
+          alert("Erro no Mercado Pago: " + (res.mensagem || "Verifique as configurações da loja."));
+          btn.disabled = false;
+          btn.innerHTML = 'Confirmar Pedido <i class="fa-solid fa-check ml-1"></i>';
         }
       })
       .catch(function() {
