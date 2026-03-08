@@ -233,6 +233,24 @@
       </div>
 
       <!-- Banner Monte Açaí -->
+      <div id="areaInfoEntrega" class="hidden mb-6 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-center">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500">
+            <i class="fa-solid fa-motorcycle"></i>
+          </div>
+          <div>
+            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tempo de Entrega</p>
+            <p id="txtTempoEntrega" class="font-bold text-gray-800 text-sm">--</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <select id="calcBairroSelect" class="campo-select py-2 text-xs flex-1 sm:w-48" onchange="calcularTaxaCardapio()">
+            <option value="">Calcular taxa de entrega...</option>
+          </select>
+          <div id="calcTaxaResult" class="font-black text-green-600 text-sm whitespace-nowrap hidden"></div>
+        </div>
+      </div>
+
       <div id="areaMonteAcai" class="hidden mb-6 no-select">
         <div onclick="abrirModalAcai()" class="banner-monte p-6 flex items-center gap-5">
           <!-- Orb decorativo -->
@@ -296,6 +314,13 @@
           </span>
           Seu Pedido
         </h3>
+
+        <div id="progressoFreteContainer" class="hidden mb-4 bg-purple-50 p-3 rounded-2xl border border-purple-100">
+          <p id="progressoFreteTexto" class="text-[10px] font-bold text-purple-700 text-center mb-1.5"></p>
+          <div class="h-1.5 w-full bg-purple-200 rounded-full overflow-hidden">
+            <div id="progressoFreteBarra" class="h-full bg-purple-600 transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
 
         <div id="listaCarrinhoSidebar"
              class="space-y-2.5 max-h-72 overflow-y-auto no-scrollbar mb-4">
@@ -635,6 +660,23 @@
         dadosBase.bairros       = p.bairros      || [];
         dadosBase.configuracoes = p.configuracoes || {};
 
+        // Info de Entrega e Calculadora
+        if (dadosBase.configuracoes.Tempo_Entrega) {
+          document.getElementById('txtTempoEntrega').innerText = dadosBase.configuracoes.Tempo_Entrega;
+          document.getElementById('areaInfoEntrega').classList.remove('hidden');
+        } else if (dadosBase.bairros.length > 0) {
+          document.getElementById('areaInfoEntrega').classList.remove('hidden');
+        }
+        var calcSel = document.getElementById('calcBairroSelect');
+        if (calcSel && dadosBase.bairros.length > 0) {
+          calcSel.innerHTML = '<option value="">Calcular taxa de entrega...</option>' + dadosBase.bairros.map(function(b) {
+            return '<option value="' + b['Taxa_R$'] + '">' + esc(b.Nome_Bairro) + '</option>';
+          }).join('');
+        } else if (calcSel) {
+          calcSel.innerHTML = '<option value="">Sem bairros</option>';
+          calcSel.disabled = true;
+        }
+
         // Injeta redes sociais e endereço no footer
         _renderizarFooterSocial(dadosBase.configuracoes);
 
@@ -898,6 +940,27 @@
     var totalBox = document.getElementById('totalSidebar');
     if (totalBox) {
       totalBox.innerText = fmtTot;
+    }
+
+    // Lógica da barra de frete grátis
+    var freteGratisMeta = parseFloat((dadosBase.configuracoes && dadosBase.configuracoes.Frete_Gratis) || 0);
+    var containerProgresso = document.getElementById('progressoFreteContainer');
+    if (containerProgresso && freteGratisMeta > 0) {
+      containerProgresso.classList.remove('hidden');
+      var falta = freteGratisMeta - total;
+      var pct = Math.min(100, (total / freteGratisMeta) * 100);
+      document.getElementById('progressoFreteBarra').style.width = pct + '%';
+      
+      var txtEl = document.getElementById('progressoFreteTexto');
+      if (falta > 0) {
+        txtEl.innerHTML = 'Falta <strong>' + fmt(falta) + '</strong> para <strong>Entrega Grátis!</strong>';
+        document.getElementById('progressoFreteBarra').classList.replace('bg-green-500', 'bg-purple-600');
+      } else {
+        txtEl.innerHTML = '🎉 Você ganhou <strong>Entrega Grátis!</strong>';
+        document.getElementById('progressoFreteBarra').classList.replace('bg-purple-600', 'bg-green-500');
+      }
+    } else if (containerProgresso) {
+      containerProgresso.classList.add('hidden');
     }
 
     renderizarCarrinhoSidebar();
@@ -1227,7 +1290,24 @@
       '<div class="bg-[#f9f7ff] p-4 rounded-2xl border border-purple-50">' +
       '<div class="flex justify-between font-black text-gray-800">' +
       '<span>Subtotal</span><span class="text-green-600">' + fmt(getTotal()) + '</span>' +
-      '</div></div></div>';
+      '</div></div>' +
+      (function(){
+        var freteGratisMeta = parseFloat((dadosBase.configuracoes && dadosBase.configuracoes.Frete_Gratis) || 0);
+        if (freteGratisMeta <= 0) return '';
+        var sub = getTotal();
+        var falta = freteGratisMeta - sub;
+        var pct = Math.min(100, (sub / freteGratisMeta) * 100);
+        var msg = falta > 0 
+          ? 'Falta <strong>' + fmt(falta) + '</strong> para <strong>Entrega Grátis!</strong>' 
+          : '🎉 Você ganhou <strong>Entrega Grátis!</strong>';
+        var corBg = falta > 0 ? 'bg-purple-600' : 'bg-green-500';
+        return '<div class="bg-purple-50 p-4 rounded-2xl border border-purple-100 mt-3">' +
+               '<p class="text-[11px] font-bold text-purple-700 text-center mb-2">' + msg + '</p>' +
+               '<div class="h-2 w-full bg-purple-200 rounded-full overflow-hidden">' +
+               '<div class="h-full ' + corBg + ' transition-all duration-300" style="width: ' + pct + '%"></div>' +
+               '</div></div>';
+      })() +
+      '</div>';
 
     document.getElementById('corpoCheckout').innerHTML = html;
   }
@@ -1394,7 +1474,12 @@
       }
     }
     
+    var freteGratisMeta = parseFloat((dadosBase.configuracoes && dadosBase.configuracoes.Frete_Gratis) || 0);
+    var ganhouFreteGratis = freteGratisMeta > 0 && subtotal >= freteGratisMeta;
+    
     var taxa     = checkout.tipoEntrega === 'entrega' ? checkout.taxaEntrega : 0;
+    if (ganhouFreteGratis) taxa = 0; // Zera a taxa se atingiu a meta
+
     var total    = Math.max(0, subtotal - desconto + taxa);
 
     document.getElementById('tituloCheckout').innerText    = 'Pagamento';
@@ -1462,10 +1547,10 @@
       (desconto > 0
         ? '<div class="flex justify-between text-sm"><span class="text-gray-500 font-medium">Desconto</span>' +
           '<span class="font-black text-green-600">-' + fmt(desconto) + '</span></div>' : '') +
-      (taxa > 0
+      ((taxa > 0 || ganhouFreteGratis) && checkout.tipoEntrega === 'entrega'
         ? '<div class="flex justify-between text-sm"><span class="text-gray-500 font-medium">Entrega (' +
           esc(checkout.nomeBairro) + ')</span>' +
-          '<span class="font-black text-gray-700">+' + fmt(taxa) + '</span></div>' : '') +
+          (ganhouFreteGratis ? '<span class="font-black text-green-600">Grátis</span>' : '<span class="font-black text-gray-700">+' + fmt(taxa) + '</span>') + '</div>' : '') +
       '<div class="flex justify-between font-black text-gray-800 pt-1">' +
       '<span>TOTAL</span><span class="text-green-600">' + fmt(total) + '</span></div>' +
       '</div></div>' +
@@ -1483,8 +1568,13 @@
 
   function calcTrocoOnline() {
     var subtotal = getTotal();
+    var freteGratisMeta = parseFloat((dadosBase.configuracoes && dadosBase.configuracoes.Frete_Gratis) || 0);
+    var ganhouFreteGratis = freteGratisMeta > 0 && subtotal >= freteGratisMeta;
+
     var desconto = checkout.cupom ? checkout.cupom.desconto : 0;
     var taxa     = checkout.tipoEntrega === 'entrega' ? checkout.taxaEntrega : 0;
+    if (ganhouFreteGratis) taxa = 0;
+
     var total    = Math.max(0, subtotal - desconto + taxa);
     var vPago    = checkout.valorPago || 0;
     var divMsg   = document.getElementById('msgTrocoWrapper');
@@ -1536,8 +1626,13 @@
     btn.disabled  = true;
 
     var subtotal = getTotal();
+    var freteGratisMeta = parseFloat((dadosBase.configuracoes && dadosBase.configuracoes.Frete_Gratis) || 0);
+    var ganhouFreteGratis = freteGratisMeta > 0 && subtotal >= freteGratisMeta;
+
     var desconto = checkout.cupom ? checkout.cupom.desconto : 0;
     var taxa     = checkout.tipoEntrega === 'entrega' ? checkout.taxaEntrega : 0;
+    if (ganhouFreteGratis) taxa = 0;
+
     var total    = Math.max(0, subtotal - desconto + taxa);
     var endereco = checkout.tipoEntrega === 'entrega'
       ? checkout.nomeBairro + ' — ' + checkout.endereco
@@ -1777,6 +1872,17 @@
     atualizarUI_Carrinho();
   }
 
+  function calcularTaxaCardapio() {
+    var sel = document.getElementById('calcBairroSelect');
+    var res = document.getElementById('calcTaxaResult');
+    if (sel.value !== "") {
+      var val = parseFloat(sel.value);
+      res.innerText = val > 0 ? fmt(val) : 'Grátis';
+      res.classList.remove('hidden');
+    } else {
+      res.classList.add('hidden');
+    }
+  }
   </script>
 
   <!-- ══════════════════════════════

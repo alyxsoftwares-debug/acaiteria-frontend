@@ -503,7 +503,7 @@ table.tbl tr:last-child td{border-bottom:none}
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);text-align:center">
         <span style="display:block;font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Desenvolvido por</span>
         <span style="font-size:11px;font-weight:800;color:rgba(255,255,255,.55);letter-spacing:.04em">AlyxSoftwares</span>
-        <a href="tel:+5584981282146" style="display:block;font-size:10px;color:rgba(255,255,255,.35);margin-top:2px;text-decoration:none">(84) 98128-2146</a>
+        <a href="tel:+5585921480429" style="display:block;font-size:10px;color:rgba(255,255,255,.35);margin-top:2px;text-decoration:none">(84) 98128-2146</a>
       </div>
     </div>
   </aside>
@@ -3125,6 +3125,10 @@ function renderConfigLoja(){
   '<div class="form-group"><label class="form-label">Status da Loja</label><select class="form-control" id="cfg_status">'+statusOpts+'</select></div>'+
   '<div class="form-group"><label class="form-label">Endereço da Loja</label><input class="form-control" id="cfg_end" value="'+esc(c['Endereco_Loja']||'')+'" placeholder="Rua, nº, bairro — Cidade/UF"/></div>'+
   '<div class="form-group"><label class="form-label">Preço por KG (R$)</label><input type="number" step="0.01" class="form-control" id="cfg_kgp" value="'+esc(c['Preco_KG']||'39.90')+'"/></div>'+
+  '<div class="form-row cols-2">'+
+    '<div class="form-group"><label class="form-label">Entrega Grátis a partir de (R$ 0 = desativar)</label><input type="number" step="0.01" class="form-control" id="cfg_frete_gratis" value="'+esc(c['Frete_Gratis']||'0')+'" placeholder="Ex: 50.00"/></div>'+
+    '<div class="form-group"><label class="form-label">Tempo Estimado de Entrega</label><input type="text" class="form-control" id="cfg_tempo_entrega" value="'+esc(c['Tempo_Entrega']||'')+'" placeholder="Ex: 40 a 60 min"/></div>'+
+  '</div>'+
   '<div class="form-group"><label class="form-label">URL do Logo</label><input type="url" class="form-control" id="cfg_logo" value="'+esc(c['URL_Logo']||'')+'" placeholder="https://..."/></div>'+
   // Seção Redes Sociais
   '<div style="border-top:1px solid #f3f4f6;margin:16px 0 14px;padding-top:14px">'+
@@ -3203,6 +3207,8 @@ function salvarConfiguracoes(){
     'Status_Loja':     document.getElementById('cfg_status').value,
     'Endereco_Loja':   document.getElementById('cfg_end').value.trim(),
     'Preco_KG':        document.getElementById('cfg_kgp').value,
+    'Frete_Gratis':    document.getElementById('cfg_frete_gratis') ? document.getElementById('cfg_frete_gratis').value : '0',
+    'Tempo_Entrega':   document.getElementById('cfg_tempo_entrega') ? document.getElementById('cfg_tempo_entrega').value.trim() : '',
     'URL_Logo':        document.getElementById('cfg_logo').value.trim(),
     'Instagram_URL':   document.getElementById('cfg_instagram') ? document.getElementById('cfg_instagram').value.trim() : '',
     'WhatsApp_Link':   document.getElementById('cfg_wpp_link')  ? document.getElementById('cfg_wpp_link').value.trim()  : '',
