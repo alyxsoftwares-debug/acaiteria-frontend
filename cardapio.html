@@ -754,7 +754,7 @@
       })
     .catch(function (err) {
       clearTimeout(_loadTimeout);
-      mostrarErroCardapio('Verifique sua conexão e atualize a página.');
+      mostrarErroCardapio('Erro técnico: ' + err.message);
     });
   };
 
