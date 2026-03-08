@@ -234,8 +234,8 @@
 
       <!-- Banner Monte Açaí -->
       <div id="areaInfoEntrega" class="hidden mb-6 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-center">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500">
+        <div id="boxTempoEntrega" class="flex items-center gap-3 hidden">
+          <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500 flex-shrink-0">
             <i class="fa-solid fa-motorcycle"></i>
           </div>
           <div>
@@ -243,10 +243,9 @@
             <p id="txtTempoEntrega" class="font-bold text-gray-800 text-sm">--</p>
           </div>
         </div>
-        <div class="flex items-center gap-2 w-full sm:w-auto">
-          <select id="calcBairroSelect" class="campo-select py-2 text-xs flex-1 sm:w-48" onchange="calcularTaxaCardapio()">
-            <option value="">Calcular taxa de entrega...</option>
-          </select>
+        <div class="flex items-center gap-2 w-full sm:w-auto ml-auto">
+          <input list="listaBairrosTaxa" id="calcBairroInput" class="campo-texto py-2 text-xs flex-1 sm:w-56" placeholder="🔍 Buscar taxa de entrega..." onchange="calcularTaxaCardapio()" oninput="calcularTaxaCardapio()">
+          <datalist id="listaBairrosTaxa"></datalist>
           <div id="calcTaxaResult" class="font-black text-green-600 text-sm whitespace-nowrap hidden"></div>
         </div>
       </div>
@@ -661,20 +660,23 @@
         dadosBase.configuracoes = p.configuracoes || {};
 
         // Info de Entrega e Calculadora
-        if (dadosBase.configuracoes.Tempo_Entrega) {
+        if (dadosBase.configuracoes.Tempo_Entrega && dadosBase.configuracoes.Tempo_Entrega.trim() !== "") {
           document.getElementById('txtTempoEntrega').innerText = dadosBase.configuracoes.Tempo_Entrega;
+          document.getElementById('boxTempoEntrega').classList.remove('hidden');
           document.getElementById('areaInfoEntrega').classList.remove('hidden');
         } else if (dadosBase.bairros.length > 0) {
           document.getElementById('areaInfoEntrega').classList.remove('hidden');
         }
-        var calcSel = document.getElementById('calcBairroSelect');
-        if (calcSel && dadosBase.bairros.length > 0) {
-          calcSel.innerHTML = '<option value="">Calcular taxa de entrega...</option>' + dadosBase.bairros.map(function(b) {
-            return '<option value="' + b['Taxa_R$'] + '">' + esc(b.Nome_Bairro) + '</option>';
+        
+        var datalist = document.getElementById('listaBairrosTaxa');
+        var calcInput = document.getElementById('calcBairroInput');
+        if (datalist && dadosBase.bairros.length > 0) {
+          datalist.innerHTML = dadosBase.bairros.map(function(b) {
+            return '<option value="' + esc(b.Nome_Bairro) + '"></option>';
           }).join('');
-        } else if (calcSel) {
-          calcSel.innerHTML = '<option value="">Sem bairros</option>';
-          calcSel.disabled = true;
+        } else if (calcInput) {
+          calcInput.placeholder = 'Sem bairros disponíveis';
+          calcInput.disabled = true;
         }
 
         // Injeta redes sociais e endereço no footer
@@ -1873,12 +1875,18 @@
   }
 
   function calcularTaxaCardapio() {
-    var sel = document.getElementById('calcBairroSelect');
+    var input = document.getElementById('calcBairroInput');
     var res = document.getElementById('calcTaxaResult');
-    if (sel.value !== "") {
-      var val = parseFloat(sel.value);
-      res.innerText = val > 0 ? fmt(val) : 'Grátis';
-      res.classList.remove('hidden');
+    var valNome = input.value.trim();
+    if (valNome !== "") {
+      var bairro = dadosBase.bairros.find(function(b) { return b.Nome_Bairro === valNome; });
+      if (bairro) {
+        var taxa = parseFloat(bairro['Taxa_R$']);
+        res.innerText = taxa > 0 ? fmt(taxa) : 'Grátis';
+        res.classList.remove('hidden');
+      } else {
+        res.classList.add('hidden');
+      }
     } else {
       res.classList.add('hidden');
     }
