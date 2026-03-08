@@ -681,7 +681,7 @@
         // Popula os bairros
         var calcSel = document.getElementById('calcBairroSelect');
         if (calcSel && dadosBase.bairros && dadosBase.bairros.length > 0) {
-          calcSel.innerHTML = '<option value="">Calcular taxa de entrega...</option>' + dadosBase.bairros.map(function(b) {
+          calcSel.innerHTML = '<option value="">Calcular entrega...</option>' + dadosBase.bairros.map(function(b) {
             return '<option value="' + b['Taxa_R$'] + '">' + esc(b.Nome_Bairro) + '</option>';
           }).join('');
           if (areaInfo) areaInfo.classList.remove('hidden');
