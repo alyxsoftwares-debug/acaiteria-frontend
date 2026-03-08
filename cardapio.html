@@ -660,6 +660,11 @@
         dadosBase.bairros       = p.bairros      || [];
         dadosBase.configuracoes = p.configuracoes || {};
 
+        // --- INÍCIO DO TESTE DE FORÇAR VALORES ---
+        dadosBase.configuracoes.Tempo_Entrega = "45 a 60 min";
+        dadosBase.configuracoes.Frete_Gratis = 50.00;
+        // --- FIM DO TESTE ---
+
         // Info de Entrega e Calculadora
         var c = dadosBase.configuracoes || {};
         var tempoCfg = (c.Tempo_Entrega || c.tempo_entrega || c.tempoEntrega || "").toString().trim();
